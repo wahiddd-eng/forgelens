@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+build/
+dist/
+*.egg-info/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Data and model artifacts
+data/**
+!data/**/
+!data/**/README.md
+!data/**/.gitkeep
+experiments/logs/
+experiments/checkpoints/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.pdf
+*.png
+*.jpg
+
+# Local configuration and tooling
+.env
+.ipynb_checkpoints/
+.DS_Store
+node_modules/
+app/frontend/build/
