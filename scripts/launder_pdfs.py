@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import random
 from pathlib import Path
 
 from forgelens.forgery import LAUNDER_METHODS, launder, write_masks
+from forgelens.utils import stable_seed
 
 
 def main() -> None:
@@ -27,7 +27,6 @@ def main() -> None:
 
     import pymupdf
 
-    rng = random.Random(args.seed)
     made = 0
     for json_path in sorted(args.input.rglob("*.json")):
         record = json.loads(json_path.read_text())
@@ -35,8 +34,8 @@ def main() -> None:
         if not pdf.exists() or record.get("label") not in ("genuine", "forged"):
             continue
         out_pdf = args.out / f"{record['statement_id']}__{args.method}.pdf"
-        label = launder(pdf, record, out_pdf, method=args.method, seed=rng.randrange(2**31),
-                        dpi=args.dpi)
+        seed = stable_seed(args.seed, record["statement_id"], args.method)
+        label = launder(pdf, record, out_pdf, method=args.method, seed=seed, dpi=args.dpi)
         if args.masks and label.get("edits"):
             with pymupdf.open(out_pdf) as doc:
                 size = (doc[0].rect.width, doc[0].rect.height)

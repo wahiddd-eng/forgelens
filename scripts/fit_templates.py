@@ -14,6 +14,7 @@ import json
 from pathlib import Path
 
 from forgelens.signals.template import TemplateMatcher, fit_profiles
+from forgelens.utils import run_info
 
 
 def main() -> None:
@@ -30,7 +31,9 @@ def main() -> None:
             samples.append((record["bank_id"], pdf))
     profiles = fit_profiles(samples)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    TemplateMatcher(profiles).save(args.out)
+    # Profiles depend on the fonts installed where the statements were rendered.
+    meta = {"run": run_info(vars(args)), "statements": len(samples)}
+    TemplateMatcher(profiles, meta).save(args.out)
     for bank, p in sorted(profiles.items()):
         print(f"{bank}: {p['n']} statements, fonts {p['fonts']}")
 

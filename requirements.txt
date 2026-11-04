@@ -1,22 +1,4 @@
-torch
-torchvision
-opencv-python
-pymupdf
-pdfplumber
-pikepdf
-pytesseract
-augraphy
-faker
-jinja2
-weasyprint
-pandas
-numpy
-scikit-learn
-xgboost
-pyyaml
-tqdm
-fastapi
-uvicorn
-python-multipart
-pytest
-ruff
+# Everything, for a full development machine. CI and the Mac set-up only need the core
+# package and dev tools:  pip install -e ".[dev]"
+# On the GPU machine install PyTorch first from https://pytorch.org with the CUDA 12.8+ build.
+-e .[dev,ml,app]

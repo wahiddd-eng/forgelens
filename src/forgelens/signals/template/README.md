@@ -15,12 +15,14 @@ Compares a statement with what the bank it claims to come from normally produces
 | `page_size` | Page size or orientation differs |
 | `creator` | The PDF's "Creator" differs (the "Producer" is ignored, because re-saving changes it) |
 
-It abstains (score 0.5) on image-only PDFs and on banks it has no profile for.
+It abstains (score 0.5) on image-only, locked and damaged PDFs and on banks it has no profile for. Text sizes may differ by up to 0.15 pt (rounding); imitations differ by 0.3 pt or more.
+
+Profiles depend on the fonts installed where the statements were rendered. Fit and check on the same set-up; `fit_templates.py` saves the code version and environment in the profile file (`matcher.meta`).
 
 ```python
 from forgelens.signals.template import TemplateMatcher
 
-matcher = TemplateMatcher.load("experiments/templates_v3.json")
+matcher = TemplateMatcher.load("experiments/templates_v4.json")
 report = matcher.check("statement.pdf")
 report.bank_id, report.suspicious, report.score
 [f.message for f in report.findings]

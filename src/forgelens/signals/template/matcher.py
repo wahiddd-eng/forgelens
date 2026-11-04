@@ -10,6 +10,9 @@ This catches forgeries rebuilt from an imitation of the template and edits typed
 the bank never uses. It cannot catch a forgery rendered with the bank's exact template.
 Re-saving ("Print to PDF") changes the producer but not these properties, so the producer
 is deliberately not compared.
+
+Profiles depend on the fonts installed where the statements were rendered, so fit and
+check on the same set-up; ``fit_templates.py`` records the environment in the profile file.
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from ..financial.extract import parse_statement, read_cells
+from ...reader import UnreadablePDF, open_pdf, parse_cells, read_cells
 
 WEIGHTS = {
     "page_size": 0.3,
@@ -35,7 +38,8 @@ WEIGHTS = {
     "amount_format": 0.5,
     "masthead": 0.4,
 }
-MIN_TOLERANCE_PT = 1.5
+MIN_TOLERANCE_PT = 1.5  # column and masthead positions
+SIZE_TOLERANCE_PT = 0.15  # text sizes; imitations differ by 0.3 pt or more
 
 
 def _date_shape(text: str) -> str:
@@ -59,24 +63,21 @@ def _amount_style(text: str) -> tuple[str, str] | None:
     return grouping, suffix
 
 
-def fingerprint(pdf_path: str | Path) -> dict:
-    """Measure the template properties of one statement."""
-    import pymupdf
-
-    with pymupdf.open(pdf_path) as doc:
-        meta = doc.metadata or {}
-        page = doc[0]
-        size = [round(page.rect.width), round(page.rect.height)]
-        fonts = sorted({f[3].split("+", 1)[-1] for p in range(doc.page_count)
-                        for f in doc.get_page_fonts(p)})
-        cells = read_cells(doc)
-    parsed = parse_statement(pdf_path)
+def _measure(doc) -> tuple[dict, list]:
+    """Return the fingerprint of an open document and its text cells."""
+    meta = doc.metadata or {}
+    page = doc[0]
+    size = [round(page.rect.width), round(page.rect.height)]
+    fonts = sorted({f[3].split("+", 1)[-1] for p in range(doc.page_count)
+                    for f in doc.get_page_fonts(p)})
+    cells = read_cells(doc)
+    parsed = parse_cells(cells, doc.page_count)
     page0 = [c for c in cells if c.page == 0]
     top = [c for c in page0 if c.bbox[1] < (parsed.header_top.get(0, 200))]
     masthead = max(top or page0, key=lambda c: (c.size, -c.bbox[1]), default=None)
     balances = [r.cells["balance"] for r in parsed.rows if "balance" in r.cells]
     styles = {s for s in (_amount_style(c.text) for c in balances) if s}
-    return {
+    fp = {
         "page_size": size,
         "creator": meta.get("creator", ""),
         "fonts": fonts,
@@ -93,6 +94,17 @@ def fingerprint(pdf_path: str | Path) -> dict:
                       "x0": round(masthead.bbox[0], 1)} if masthead else None),
         "page0_text": " ".join(c.text for c in page0),
     }
+    return fp, cells
+
+
+def fingerprint(pdf_path: str | Path, password: str | None = None) -> dict:
+    """Measure the template properties of one statement."""
+    with open_pdf(pdf_path, password) as doc:
+        return _measure(doc)[0]
+
+
+def _near(value: float, allowed) -> bool:
+    return any(abs(value - a) <= SIZE_TOLERANCE_PT for a in allowed)
 
 
 def fit_profiles(samples: list[tuple[str, str | Path]]) -> dict:
@@ -177,27 +189,39 @@ class TemplateReport:
 
 
 class TemplateMatcher:
-    """Compare statements with the learned profile of the bank they claim to come from."""
+    """Compare statements with the learned profile of the bank they claim to come from.
 
-    def __init__(self, profiles: dict):
+    ``meta`` is free-form information about how the profiles were fitted (for example the
+    machine's fonts and library versions); it is saved with the profiles.
+    """
+
+    def __init__(self, profiles: dict, meta: dict | None = None):
         self.profiles = profiles
+        self.meta = meta or {}
 
     @classmethod
     def load(cls, path: str | Path) -> TemplateMatcher:
-        return cls(json.loads(Path(path).read_text()))
+        data = json.loads(Path(path).read_text())
+        if "profiles" in data and isinstance(data.get("meta"), dict):
+            return cls(data["profiles"], data["meta"])
+        return cls(data)  # profile files written before meta was added
 
     def save(self, path: str | Path) -> None:
-        Path(path).write_text(json.dumps(self.profiles, indent=2))
+        Path(path).write_text(json.dumps({"meta": self.meta, "profiles": self.profiles},
+                                         indent=2))
 
     def identify(self, fp: dict) -> str | None:
         text = re.sub(r"\s+", " ", fp["page0_text"]).lower()
         hits = [b for b, p in self.profiles.items() if p["bank_name"].lower() in text]
         return max(hits, key=lambda b: len(self.profiles[b]["bank_name"])) if hits else None
 
-    def check(self, pdf_path: str | Path, bank_id: str | None = None) -> TemplateReport:
-        import pymupdf
-
-        fp = fingerprint(pdf_path)
+    def check(self, pdf_path: str | Path, bank_id: str | None = None,
+              password: str | None = None) -> TemplateReport:
+        try:
+            with open_pdf(pdf_path, password) as doc:
+                fp, cells = _measure(doc)
+        except UnreadablePDF as exc:
+            return TemplateReport(bank_id, abstained=True, reason=str(exc))
         if not fp["text_layer"]:
             return TemplateReport(None, abstained=True, reason="no text layer")
         bank_id = bank_id or self.identify(fp)
@@ -216,13 +240,11 @@ class TemplateMatcher:
                                 f"{name} statements are created by '{', '.join(p['creators'])}'."))
         unexpected = sorted(set(fp["fonts"]) - set(p["fonts"]))
         if unexpected:
-            with pymupdf.open(pdf_path) as doc:
-                cells = [c for c in read_cells(doc) if c.font in unexpected]
             add(TemplateFinding(
                 "unexpected_font",
                 f"Font(s) {', '.join(unexpected)} are never used in {name} statements.",
                 [{"page": c.page, "bbox": [round(v, 2) for v in c.bbox], "text": c.text,
-                  "font": c.font} for c in cells]))
+                  "font": c.font} for c in cells if c.font in unexpected]))
         new_labels = [t for t in fp["header_labels"] if t not in p["header_labels"]]
         if new_labels:
             add(TemplateFinding("header_labels", f"Table header text {new_labels} does not match "
@@ -237,7 +259,8 @@ class TemplateMatcher:
         if fp["table_font"] and fp["table_font"] not in p["table_fonts"]:
             add(TemplateFinding("table_font", f"Table figures use {fp['table_font']}; {name} uses "
                                 f"{', '.join(p['table_fonts'])}."))
-        if fp["table_font_size"] is not None and fp["table_font_size"] not in p["table_font_sizes"]:
+        if fp["table_font_size"] is not None and not _near(fp["table_font_size"],
+                                                           p["table_font_sizes"]):
             add(TemplateFinding("table_font_size",
                                 f"Table text is {fp['table_font_size']} pt; {name} uses "
                                 f"{', '.join(str(s) for s in p['table_font_sizes'])} pt."))
@@ -254,7 +277,7 @@ class TemplateMatcher:
         if mh and ref["fonts"]:
             off_x = ref["x0_mean"] is not None and abs(mh["x0"] - ref["x0_mean"]) > max(
                 MIN_TOLERANCE_PT, 4 * (ref["x0_std"] or 0))
-            if mh["font"] not in ref["fonts"] or mh["size"] not in ref["sizes"] or off_x:
+            if mh["font"] not in ref["fonts"] or not _near(mh["size"], ref["sizes"]) or off_x:
                 add(TemplateFinding("masthead", f"The bank name is set in {mh['font']} "
                                     f"{mh['size']} pt at x={mh['x0']}; {name} uses "
                                     f"{', '.join(ref['fonts'])} {ref['sizes']} pt."))

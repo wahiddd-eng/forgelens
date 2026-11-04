@@ -13,7 +13,7 @@ from .banks import BANKS, BankProfile, get_bank
 from .layout import LayoutError, locate_fields
 from .models import Customer, Statement, Transaction
 from .money import format_inr, to_money
-from .render import render_html, render_pdf
+from .render import embedded_fonts, render_html, render_pdf
 from .transactions import build_statement
 
 __all__ = [
@@ -24,6 +24,7 @@ __all__ = [
     "Statement",
     "Transaction",
     "build_statement",
+    "embedded_fonts",
     "format_inr",
     "get_bank",
     "locate_fields",

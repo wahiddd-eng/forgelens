@@ -9,8 +9,9 @@ pymupdf = pytest.importorskip("pymupdf")
 
 from forgelens.forgery import forge
 from forgelens.generator import build_statement, get_bank, locate_fields, render_pdf
+from forgelens.reader import font_key
 from forgelens.signals.pdf_structure import analyze_pdf
-from forgelens.signals.pdf_structure.analyzer import _font_key, _pdf_date
+from forgelens.signals.pdf_structure.analyzer import _pdf_date
 
 BANK = get_bank("himalaya_national")
 
@@ -121,7 +122,7 @@ def test_image_only_pdf_is_neutral(tmp_path):
     ],
 )
 def test_font_key_ignores_subset_tags_and_spelling(name, key):
-    assert _font_key(name) == key
+    assert font_key(name) == key
 
 
 def test_pdf_date_parsing():

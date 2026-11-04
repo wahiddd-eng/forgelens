@@ -11,7 +11,15 @@ import argparse
 import json
 from pathlib import Path
 
-from forgelens.generator import BANKS, build_statement, get_bank, locate_fields, render_pdf
+from forgelens.generator import (
+    BANKS,
+    LayoutError,
+    build_statement,
+    get_bank,
+    locate_fields,
+    render_pdf,
+)
+from forgelens.utils import run_info
 
 
 def main() -> None:
@@ -26,23 +34,46 @@ def main() -> None:
     args = parser.parse_args()
 
     banks = list(BANKS.values()) if args.bank == "all" else [get_bank(args.bank)]
+    manifest = {"run": run_info(vars(args)), "banks": {}}
+    failed = 0
     for bank in banks:
-        generate(bank, args)
+        made, errors, fonts = generate(bank, args)
+        manifest["banks"][bank.bank_id] = {"statements": made, "failed": errors,
+                                           "expected_font": bank.primary_font, "fonts": fonts}
+        failed += len(errors)
+    args.out.mkdir(parents=True, exist_ok=True)
+    # The manifest records the fonts each bank was rendered with: statements made on machines
+    # with different fonts are not interchangeable (see the README).
+    (args.out / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    if failed:
+        raise SystemExit(f"{failed} statement(s) failed; see manifest.json")
 
 
-def generate(bank, args) -> None:
+def generate(bank, args) -> tuple[int, list[dict], list[str]]:
+    """Generate one bank's statements; return (made, failures, fonts used)."""
     out_dir = args.out / bank.bank_id
     out_dir.mkdir(parents=True, exist_ok=True)
+    made, errors, fonts = 0, [], set()
     for seed in range(args.seed, args.seed + args.count):
         statement = build_statement(seed=seed, bank=bank, months=args.months)
         record = statement.ground_truth()
+        pdf_path = out_dir / f"{statement.statement_id}.pdf"
         if not args.no_pdf:
-            pdf_path = render_pdf(statement, bank, out_dir / f"{statement.statement_id}.pdf")
-            record["pdf"] = pdf_path.name
-            record["layout"] = locate_fields(pdf_path, statement, bank)
+            try:
+                render_pdf(statement, bank, pdf_path)  # warns (once per bank) if a font is missing
+                record["pdf"] = pdf_path.name
+                record["layout"] = locate_fields(pdf_path, statement, bank)
+            except LayoutError as exc:
+                pdf_path.unlink(missing_ok=True)
+                errors.append({"statement_id": statement.statement_id, "error": str(exc)})
+                print(f"FAILED {statement.statement_id}: {exc}")
+                continue
+            fonts.update(record["layout"]["fonts"])
         (out_dir / f"{statement.statement_id}.json").write_text(json.dumps(record, indent=2))
+        made += 1
         print(f"{statement.statement_id}: {len(statement.transactions)} transactions, "
               f"closing balance {statement.closing_balance}")
+    return made, errors, sorted(fonts)
 
 
 if __name__ == "__main__":

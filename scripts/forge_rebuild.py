@@ -13,6 +13,8 @@ import random
 from pathlib import Path
 
 from forgelens.forgery import REBUILD_VARIANTS, rebuild, write_masks
+from forgelens.generator import LayoutError
+from forgelens.utils import stable_seed
 
 
 def main() -> None:
@@ -27,17 +29,23 @@ def main() -> None:
     parser.add_argument("--dpi", type=int, default=150)
     args = parser.parse_args()
 
-    rng = random.Random(args.seed)
-    made = 0
+    made, failed = 0, 0
     for json_path in sorted(args.genuine.rglob("*.json")):
         record = json.loads(json_path.read_text())
         if record.get("label") != "genuine":
             continue
         for k in range(args.per_statement):
-            variant = rng.choice(args.variants)
+            seed = stable_seed(args.seed, record["statement_id"], k)
+            variant = random.Random(seed).choice(args.variants)
             stem = f"{record['statement_id']}__{variant}_{k:02d}"
             out_pdf = args.out / f"{stem}.pdf"
-            label = rebuild(record, out_pdf, variant=variant, seed=rng.randrange(2**31))
+            try:
+                label = rebuild(record, out_pdf, variant=variant, seed=seed)
+            except (ValueError, LayoutError) as exc:  # no credits, or layout not readable
+                out_pdf.unlink(missing_ok=True)
+                print(f"skip {stem}: {exc}")
+                failed += 1
+                continue
             if args.masks and label["edits"]:
                 import pymupdf
 
@@ -47,7 +55,8 @@ def main() -> None:
                 label["masks"] = {"dpi": args.dpi, "files": [m.name for m in masks]}
             (args.out / f"{stem}.json").write_text(json.dumps(label, indent=2))
             made += 1
-    print(f"Created {made} rebuilt forgeries in {args.out}")
+    print(f"Created {made} rebuilt forgeries in {args.out}"
+          + (f"; skipped {failed}" if failed else ""))
 
 
 if __name__ == "__main__":

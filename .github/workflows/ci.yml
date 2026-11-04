@@ -7,18 +7,31 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install requirements
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install system libraries and fonts
+        # Pango for WeasyPrint, Ghostscript for laundering, and the free fonts the fictional
+        # banks use, so CI renders statements exactly like a developer machine.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 \
+            ghostscript fonts-liberation fonts-crosextra-carlito fonts-dejavu-core \
+            fonts-dejavu-extra
+      - name: Install package
+        # A regular (non-editable) install also checks that the templates are packaged.
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install -e .
+          pip install ".[dev]"
       - name: Lint
         run: ruff check .
       - name: Test
-        run: pytest
+        run: pytest -ra

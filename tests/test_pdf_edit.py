@@ -174,3 +174,32 @@ def test_rejects_bad_requests(genuine, tmp_path):
     no_layout = {k: v for k, v in record.items() if k != "layout"}
     with pytest.raises(ValueError):
         forge(pdf, no_layout, tmp_path / "x.pdf", operation="holder_name")
+
+
+def test_missing_matching_font_falls_back_and_says_so(genuine, tmp_path, monkeypatch):
+    """On a machine without the statement's font, a 'matched' forgery uses Helvetica and
+    its label must say so; the structure signal must still see it."""
+    from forgelens.forgery import pdf_edit
+    from forgelens.signals.pdf_structure import analyze_pdf
+
+    monkeypatch.setattr(pdf_edit, "_font_index", dict)
+    _, pdf, record = genuine
+    out = tmp_path / "no_fonts.pdf"
+    label = forge(pdf, record, out, operation="holder_name", seed=2, save_mode="rewrite",
+                  font_strategy="matched")
+    assert label["forgery"]["font_strategy"] == "fallback"
+    assert {"non_embedded_font", "font_anomaly"} & {f.check for f in analyze_pdf(out).findings}
+
+
+def test_failed_forgery_leaves_no_file_behind(genuine, tmp_path, monkeypatch):
+    from forgelens.forgery import pdf_edit
+
+    def broken(*args, **kwargs):
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(pdf_edit, "_apply", broken)
+    _, pdf, record = genuine
+    out = tmp_path / "forged.pdf"
+    with pytest.raises(RuntimeError):
+        forge(pdf, record, out, operation="holder_name", seed=2)
+    assert list(tmp_path.iterdir()) == []

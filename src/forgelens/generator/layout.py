@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..signals.financial.extract import parse_statement, read_cells
+from ..reader import open_pdf, parse_cells, read_cells
 from .banks import BankProfile
 from .models import Statement
 
@@ -23,17 +23,18 @@ class LayoutError(RuntimeError):
 def locate_fields(pdf_path: str | Path, statement: Statement, bank: BankProfile) -> dict:
     """Return a layout record mapping every summary value and table cell to its text cell.
 
-    The record has ``page_size`` (width, height in points), ``pages``, ``fields`` (customer
-    name, account number and summary values) and ``rows`` (one entry per transaction with
-    its date, amount and balance cells).
+    The record has ``page_size`` (width, height in points), ``pages``, ``fonts`` (the fonts
+    the PDF actually embeds, which depend on the fonts installed where it was rendered),
+    ``fields`` (customer name, account number and summary values) and ``rows`` (one entry
+    per transaction with its date, amount and balance cells).
     """
-    import pymupdf
-
-    parsed = parse_statement(pdf_path)
-    with pymupdf.open(pdf_path) as doc:
+    with open_pdf(pdf_path) as doc:
         width, height = doc[0].rect.width, doc[0].rect.height
         pages = doc.page_count
-        page0 = [c for c in read_cells(doc) if c.page == 0]
+        fonts = sorted({f[3].split("+", 1)[-1] for p in range(pages) for f in doc.get_page_fonts(p)})
+        cells = read_cells(doc)
+    parsed = parse_cells(cells, pages)
+    page0 = [c for c in cells if c.page == 0]
 
     if len(parsed.rows) != len(statement.transactions):
         raise LayoutError(f"Read {len(parsed.rows)} rows but the statement has "
@@ -88,6 +89,7 @@ def locate_fields(pdf_path: str | Path, statement: Statement, bank: BankProfile)
     return {
         "page_size": [round(width, 3), round(height, 3)],
         "pages": pages,
+        "fonts": fonts,
         "fields": fields,
         "rows": rows,
     }

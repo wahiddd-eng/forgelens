@@ -9,13 +9,19 @@ For each seed: a multi-page PDF statement and a ground-truth JSON file with the 
 - Indian-style transactions: salary (NEFT), UPI debits and credits, rent, EMI (ACH), bill payments (BBPS), ATM withdrawals, card (POS) payments, IMPS transfers, cheque deposits, quarterly interest and SMS charges.
 - Running balances are computed row by row with exact decimal arithmetic, so every row, the summary box and the closing balance always agree.
 - Amounts use Indian digit grouping (`12,34,567.50`).
-- The same seed always produces the same statement.
+- The same seed always produces the same statement, down to the bytes of the PDF on a given set of installed fonts: embedded-font timestamps are pinned to the statement's date (`SOURCE_DATE_EPOCH`), not the time of rendering.
+- Statement periods end between 31 Jul 2024 and 30 Jun 2026, so every date derived from a statement (generation, forgery edits, re-saves) lies before the dataset was made.
+
+## Fonts and machines
+
+Each bank's font stack starts with a free font (Liberation, Carlito, DejaVu) that is metric-compatible with the office font a real bank would use. If that font is not installed, the PDF silently uses a substitute and differs from other machines, so `render_pdf` warns, every statement's `layout.fonts` records what was embedded, and `generate_statements.py` writes a `manifest.json` with the fonts per bank and the code version. Install the fonts as in the root README before generating data that will be shared.
 
 ## Usage
 
 ```bash
-# macOS: WeasyPrint needs Pango
+# macOS: WeasyPrint needs Pango; the banks need the free fonts
 brew install pango
+brew install --cask font-liberation font-carlito font-dejavu
 
 python scripts/generate_statements.py --bank himalaya_national --count 100 --seed 0 --months 3 \
     --out data/synthetic/genuine

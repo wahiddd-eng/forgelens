@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import date
+import os
+import warnings
+from contextlib import contextmanager
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -74,8 +77,56 @@ def render_html(statement: Statement, bank: BankProfile) -> str:
     )
 
 
-def render_pdf(statement: Statement, bank: BankProfile, out_path: str | Path) -> Path:
+_IST = timezone(timedelta(hours=5, minutes=30))
+
+
+@contextmanager
+def _source_date(day: date):
+    """Pin the timestamps that font subsetting writes into the PDF to the statement's date.
+
+    Without this, the embedded font subsets carry the time of rendering, so the same seed
+    gives different bytes on every run and a statement dated 2025 contains fonts stamped
+    with today's date. ``SOURCE_DATE_EPOCH`` is the reproducible-builds convention that
+    fontTools follows.
+    """
+    old = os.environ.get("SOURCE_DATE_EPOCH")
+    os.environ["SOURCE_DATE_EPOCH"] = str(int(datetime.combine(day, time(9, 0), _IST).timestamp()))
+    try:
+        yield
+    finally:
+        if old is None:
+            os.environ.pop("SOURCE_DATE_EPOCH", None)
+        else:
+            os.environ["SOURCE_DATE_EPOCH"] = old
+
+
+def embedded_fonts(pdf_path: str | Path) -> list[str]:
+    """Return the names of the fonts a PDF uses, without subset tags."""
+    import pymupdf
+
+    with pymupdf.open(pdf_path) as doc:
+        return sorted({f[3].split("+", 1)[-1] for p in range(doc.page_count)
+                       for f in doc.get_page_fonts(p)})
+
+
+def _warn_if_font_missing(pdf_path: Path, bank: BankProfile) -> None:
+    from ..reader import font_key
+
+    used = embedded_fonts(pdf_path)
+    if font_key(bank.primary_font)[0] not in {font_key(f)[0] for f in used}:
+        warnings.warn(
+            f"Font '{bank.primary_font}' is not installed, so {bank.bank_id} statements are "
+            f"rendered with {', '.join(used)} and will differ from other machines. Install "
+            "the fonts listed in the README.", stacklevel=3)
+
+
+def render_pdf(statement: Statement, bank: BankProfile, out_path: str | Path, *,
+               check_fonts: bool = True) -> Path:
     """Write the statement as a PDF to ``out_path`` and return the path.
+
+    The output is byte-for-byte reproducible for a given statement, bank and set of
+    installed fonts. With ``check_fonts`` a warning is raised when the bank's font is not
+    installed and a substitute was used.
 
     WeasyPrint needs the Pango system library. On macOS install it with
     ``brew install pango``; on Ubuntu, ``apt install libpango-1.0-0 libpangoft2-1.0-0``.
@@ -84,5 +135,8 @@ def render_pdf(statement: Statement, bank: BankProfile, out_path: str | Path) ->
 
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    HTML(string=render_html(statement, bank)).write_pdf(out_path)
+    with _source_date(statement.generated_on):
+        HTML(string=render_html(statement, bank)).write_pdf(out_path)
+    if check_fonts:
+        _warn_if_font_missing(out_path, bank)
     return out_path

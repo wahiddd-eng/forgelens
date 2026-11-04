@@ -13,6 +13,8 @@ Imitates a forger editing the PDF directly: the original value is painted over w
 | `closing_balance` | Closing balance in the summary and in the last row | No |
 | `holder_name` | Account holder's name | Yes (figures untouched) |
 
+A forged PDF is written to a temporary file and moved into place only when complete, so a failure never leaves a copy of the genuine file under a forgery's name. The scripts derive each forgery's seed from the run seed and the statement's id (`forgelens.utils.stable_seed`), so adding or removing statements does not change the other forgeries.
+
 Each forgery also varies in how it was made, which the PDF-structure signal can pick up:
 
 - **Font strategy:** `matched` (same font family as the original, nearly invisible) or `fallback` (Helvetica, as a careless forger would use). If the matching font is not installed, `fallback` is used and the label says so.
@@ -25,7 +27,7 @@ Each forged PDF gets a JSON label containing:
 
 - `label: "forged"`, the `source_statement_id` and how the forgery was made (`forgery`);
 - every edit: field, row, page, old and new text, the original and new text boxes and the `mask_bbox` (both boxes combined, in PDF points);
-- the values the forged document now claims (`transactions`, `closing_balance`, `total_credits`, `customer`).
+- the values the forged document now claims (`transactions`, `closing_balance`, `total_credits`, `customer`). A naive `credit_amount` edit leaves the summary untouched, so its `total_credits` stays the original value; `tests/test_labels_match_documents.py` reads every kind of forgery back and checks its label.
 
 `write_masks()` draws binary PNG masks (255 = edited) at any DPI. They match pages rendered with `page.get_pixmap(dpi=...)` pixel for pixel.
 
@@ -46,7 +48,7 @@ The forger regenerates the whole statement with better numbers instead of editin
 | `rebuilt_exact` | The bank's real template and settings (insider or perfect copy) | No: needs an external check |
 | `rebuilt_imitation` | An imitation: different font, text size ±0.3–0.8 pt, often a different "Creator" | Yes, by the template signal |
 
-Labels list every changed cell with its position in the new PDF, so masks work as for PDF edits.
+Labels list every changed cell with its position in the new PDF, so masks work as for PDF edits. `old` is the value as the genuine statement printed it; `old_bbox` is `null` because the original value was never drawn in the rebuilt file. Imitation labels also record `rendered_fonts`: if the imitation font is not installed, the PDF may fall back to the bank's own font, and `font_changed` says whether that happened.
 
 ```bash
 python scripts/forge_rebuild.py --genuine data/synthetic/genuine --out data/synthetic/forged/rebuild --masks

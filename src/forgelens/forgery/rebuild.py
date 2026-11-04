@@ -16,6 +16,11 @@ The content change is the same for both: every salary credit (or, without salary
 incoming transfers, else the largest credit) is inflated and every later balance, the totals
 and the closing balance are recomputed, so the arithmetic is fully consistent. Optionally the
 account holder's name is replaced too.
+
+Labels use the same edit fields as PDF edits. ``old_bbox`` is None because the rebuilt file
+is a new document: the original values were never drawn in it. For imitations the label
+also records the fonts the PDF really embeds, since a requested imitation font that is not
+installed can fall back to the bank's own font.
 """
 
 from __future__ import annotations
@@ -33,6 +38,7 @@ from ..generator.layout import locate_fields
 from ..generator.models import Statement
 from ..generator.money import format_amount, to_money
 from ..generator.render import render_pdf
+from ..reader import font_key
 
 VARIANTS = ("rebuilt_exact", "rebuilt_imitation")
 _FONT_STACKS = (SANS, SERIF, CALIBRI, DEJAVU, DEJAVU_SERIF,
@@ -81,7 +87,10 @@ def rebuild(record: dict, out_pdf: str | Path, *, variant: str, seed: int = 0,
     if change_name:
         fake = Faker("en_IN")
         fake.seed_instance(seed)
-        forged.customer.name = fake.name().upper()
+        new_name = fake.name().upper()
+        while new_name == original.customer.name:
+            new_name = fake.name().upper()
+        forged.customer.name = new_name
 
     imitation = {}
     if variant == "rebuilt_imitation":
@@ -93,8 +102,17 @@ def rebuild(record: dict, out_pdf: str | Path, *, variant: str, seed: int = 0,
 
     out_pdf = Path(out_pdf)
     forged.statement_id = out_pdf.stem
-    render_pdf(forged, bank, out_pdf)
+    render_pdf(forged, bank, out_pdf, check_fonts=variant == "rebuilt_exact")
     layout = locate_fields(out_pdf, forged, bank)
+    if imitation:
+        families = {font_key(f)[0] for f in layout["fonts"]}
+        genuine = record.get("layout", {}).get("fonts")
+        imitation["rendered_fonts"] = layout["fonts"]
+        imitation["font_changed"] = (None if genuine is None
+                                     else families != {font_key(f)[0] for f in genuine})
+
+    def amt(v: Decimal) -> str:
+        return format_amount(v, bank.grouping)
 
     def bal(v: Decimal) -> str:
         return format_amount(v, bank.grouping, bank.balance_suffix)
@@ -104,25 +122,30 @@ def rebuild(record: dict, out_pdf: str | Path, *, variant: str, seed: int = 0,
         row = layout["rows"][i]
         if old.credit != new.credit:
             edits.append({"field": "credit", "row": i, "page": row["page"],
-                          "old": format_amount(old.credit, bank.grouping),
-                          "new": row["amount"]["text"], "new_bbox": row["amount"]["bbox"],
+                          "old": amt(old.credit), "new": row["amount"]["text"],
+                          "old_bbox": None, "new_bbox": row["amount"]["bbox"],
                           "mask_bbox": row["amount"]["bbox"]})
         if old.balance != new.balance:
             edits.append({"field": "balance", "row": i, "page": row["page"],
                           "old": bal(old.balance), "new": row["balance"]["text"],
-                          "new_bbox": row["balance"]["bbox"], "mask_bbox": row["balance"]["bbox"]})
+                          "old_bbox": None, "new_bbox": row["balance"]["bbox"],
+                          "mask_bbox": row["balance"]["bbox"]})
     fields = layout["fields"]
-    for key, old_v, new_v in (("summary_total_credits", original.total_credits, forged.total_credits),
-                              ("summary_closing", original.closing_balance, forged.closing_balance)):
-        if key in fields and old_v != new_v:
+    for key, old_text, changed in (
+            ("summary_total_credits", amt(original.total_credits),
+             original.total_credits != forged.total_credits),
+            ("summary_closing", bal(original.closing_balance),
+             original.closing_balance != forged.closing_balance)):
+        if key in fields and changed:
             f = fields[key]
-            edits.append({"field": key, "row": None, "page": f["page"], "old": str(old_v),
-                          "new": f["text"], "new_bbox": f["bbox"], "mask_bbox": f["bbox"]})
+            edits.append({"field": key, "row": None, "page": f["page"], "old": old_text,
+                          "new": f["text"], "old_bbox": None, "new_bbox": f["bbox"],
+                          "mask_bbox": f["bbox"]})
     if change_name:
         f = fields["customer_name"]
         edits.append({"field": "customer_name", "row": None, "page": f["page"],
-                      "old": original.customer.name, "new": f["text"], "new_bbox": f["bbox"],
-                      "mask_bbox": f["bbox"]})
+                      "old": original.customer.name, "new": f["text"], "old_bbox": None,
+                      "new_bbox": f["bbox"], "mask_bbox": f["bbox"]})
 
     label = copy.deepcopy(forged.ground_truth())
     label.update({

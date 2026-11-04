@@ -40,6 +40,12 @@ BRANCH_AREAS = (
 )
 UPI_NOTES = ("Payment", "UPI", "Paid via app", "Order", "Bill", "Sent")
 
+# Statement periods end between these dates. The window is fixed (not "today") so the same
+# seed always gives the same statement, and it ends early enough that every date derived
+# from a statement (generation, forgery edits, re-saves) lies before the dataset was made.
+EARLIEST_PERIOD_END = date(2024, 7, 31)
+LATEST_PERIOD_END = date(2026, 6, 30)
+
 
 @dataclass
 class _Event:
@@ -261,8 +267,8 @@ def build_statement(seed: int, bank: BankProfile, months: int = 3,
     fake.seed_instance(mixed)
 
     if period_end is None:
-        end_month = date(2025, 1, 1) + timedelta(days=rng.randint(0, 640))
-        period_end = _month_end(end_month)
+        span = (LATEST_PERIOD_END - EARLIEST_PERIOD_END).days
+        period_end = _month_end(EARLIEST_PERIOD_END + timedelta(days=rng.randint(0, span)))
     start_month = _month_starts(period_end.replace(day=1), 1)[0]
     for _ in range(months - 1):
         start_month = (start_month - timedelta(days=1)).replace(day=1)

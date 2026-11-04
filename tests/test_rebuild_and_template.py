@@ -42,7 +42,7 @@ weasyprint = pytest.importorskip("weasyprint")
 pymupdf = pytest.importorskip("pymupdf")
 
 from forgelens.forgery import forge, launder, rebuild
-from forgelens.generator import locate_fields, render_pdf
+from forgelens.generator import embedded_fonts, locate_fields, render_pdf
 from forgelens.signals.financial import check_statement
 from forgelens.signals.pdf_structure import analyze_pdf
 from forgelens.signals.template import TemplateMatcher, fit_profiles
@@ -69,9 +69,12 @@ def env(tmp_path_factory):
 
 
 def test_profiles_learn_bank_names_and_fonts(env):
-    _, matcher, _ = env
+    tmp, matcher, _ = env
     assert matcher.profiles["sahyadri"]["bank_name"] == "Sahyadri Bank"
-    assert all(f.startswith("Carlito") for f in matcher.profiles["sahyadri"]["fonts"])
+    # The fonts depend on what is installed, so compare with what the PDFs really embed.
+    train = [tmp / f"sahyadri_{seed:06d}.pdf" for seed in (100, 101, 102)]
+    embedded = {f for pdf in train for f in embedded_fonts(pdf)}
+    assert set(matcher.profiles["sahyadri"]["fonts"]) == embedded
 
 
 @pytest.mark.parametrize("bank_id", BANK_IDS)

@@ -22,7 +22,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from ...generator.money import format_inr
-from .extract import ParsedStatement, parse_statement
+from ...reader import ParsedStatement, UnreadablePDF, parse_statement
 
 TOLERANCE = Decimal("0.005")
 
@@ -45,10 +45,16 @@ class FinancialReport:
     findings: list[Finding] = field(default_factory=list)
     checks_run: list[str] = field(default_factory=list)
     parse_warnings: list[str] = field(default_factory=list)
+    error: str | None = None  # why the file could not be read (locked, damaged)
 
     @property
     def consistent(self) -> bool:
         return self.parsed_rows > 0 and not self.findings
+
+    @property
+    def abstained(self) -> bool:
+        """True when no table could be read, so the signal gives no evidence either way."""
+        return self.parsed_rows == 0
 
     @property
     def score(self) -> float:
@@ -79,6 +85,8 @@ class FinancialReport:
         return {
             "signal": "financial_consistency",
             "consistent": self.consistent,
+            "abstained": self.abstained,
+            "error": self.error,
             "score": round(self.score, 4),
             "parsed_rows": self.parsed_rows,
             "checks_run": self.checks_run,
@@ -184,6 +192,13 @@ def check_parsed(parsed: ParsedStatement) -> FinancialReport:
     return report
 
 
-def check_statement(pdf_path: str | Path) -> FinancialReport:
-    """Run the financial-consistency signal on a statement PDF."""
-    return check_parsed(parse_statement(pdf_path))
+def check_statement(pdf_path: str | Path, password: str | None = None) -> FinancialReport:
+    """Run the financial-consistency signal on a statement PDF.
+
+    A locked or damaged file gives an abstaining report whose ``error`` says why.
+    """
+    try:
+        parsed = parse_statement(pdf_path, password)
+    except UnreadablePDF as exc:
+        return FinancialReport(parsed_rows=0, parse_warnings=[str(exc)], error=str(exc))
+    return check_parsed(parsed)

@@ -10,6 +10,8 @@ works on forged and real statements alike and on many layouts:
   has the nearest right edge.
 * Every transaction row has a balance cell; the row's date is the leftmost date on that
   line. A line reading "Opening balance" (or "B/F") is the opening-balance row.
+* Pages that continue the table without repeating its header use the columns of the last
+  page that had one.
 * The account summary may sit above the table or below it, with values under their labels
   or beside them.
 * Amounts may use Indian (12,34,567.50), western (1,234,567.50) or no digit grouping and may
@@ -22,6 +24,9 @@ import re
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
+
+from .cells import Cell, read_cells
+from .document import open_pdf
 
 AMOUNT_RE = re.compile(
     r"^(?P<num>-?(?:\d{1,3}(?:,\d{2,3})+|\d+)\.\d{2})\s*(?P<sfx>\(?(?:Cr|CR|cr|Dr|DR|dr)\)?)?$"
@@ -47,34 +52,6 @@ def parse_amount(text: str) -> Decimal | None:
     if m.group("sfx") and "d" in m.group("sfx").lower():
         value = -value  # "Dr" balance means overdrawn
     return value
-
-
-@dataclass
-class Cell:
-    """A printed text span with its position and style (PDF points, top-left origin)."""
-
-    page: int
-    text: str
-    bbox: tuple[float, float, float, float]
-    origin: tuple[float, float]
-    size: float
-    font: str
-    color: int
-
-    @property
-    def baseline(self) -> float:
-        return self.origin[1]
-
-    def to_dict(self) -> dict:
-        return {
-            "page": self.page,
-            "text": self.text,
-            "bbox": [round(v, 3) for v in self.bbox],
-            "origin": [round(v, 3) for v in self.origin],
-            "size": round(self.size, 3),
-            "font": self.font,
-            "color": self.color,
-        }
 
 
 @dataclass
@@ -106,71 +83,6 @@ class ParsedStatement:
     @property
     def ok(self) -> bool:
         return bool(self.rows)
-
-
-def full_font_names(doc, page_no: int) -> dict[str, str]:
-    """Map shortened span font names to the page's full font names.
-
-    Text extraction reports at most about 24 characters of a font name
-    (``Liberation-Serif-Bold-It``); the page's font list has the full name.
-    """
-    names = [f[3].split("+", 1)[-1] for f in doc.get_page_fonts(page_no)]
-    lookup = {n: n for n in names}
-
-    def resolve(short: str) -> str:
-        if short in lookup:
-            return lookup[short]
-        matches = [n for n in names if n.startswith(short)]
-        return matches[0] if len(matches) == 1 else short
-
-    return _ResolvingDict(resolve)
-
-
-class _ResolvingDict(dict):
-    def __init__(self, resolve):
-        super().__init__()
-        self._resolve = resolve
-
-    def __missing__(self, key):
-        value = self._resolve(key)
-        self[key] = value
-        return value
-
-
-def read_cells(doc, gap: float = 3.0) -> list[Cell]:
-    """Return text cells with positions, splitting runs where characters are ``gap`` apart.
-
-    PDF text extractors join neighbouring table cells into one run when they share a font
-    and sit on the same line. A gap wider than a normal letter spacing marks a new cell.
-    """
-    out = []
-    for page_no, page in enumerate(doc):
-        fonts = full_font_names(doc, page_no)
-        for block in page.get_text("rawdict")["blocks"]:
-            for line in block.get("lines", []):
-                for s in line["spans"]:
-                    chars = s["chars"]
-                    groups, current = [], []
-                    for ch in chars:
-                        if current and ch["bbox"][0] - current[-1]["bbox"][2] > max(gap, 0.35 * s["size"]):
-                            groups.append(current)
-                            current = []
-                        current.append(ch)
-                    if current:
-                        groups.append(current)
-                    for g in groups:
-                        text = "".join(ch["c"] for ch in g)
-                        stripped = text.strip()
-                        if not stripped:
-                            continue
-                        visible = [ch for ch in g if ch["c"].strip()]
-                        x0 = min(ch["bbox"][0] for ch in visible)
-                        x1 = max(ch["bbox"][2] for ch in visible)
-                        bbox = (x0, s["bbox"][1], x1, s["bbox"][3])
-                        origin = (visible[0]["origin"][0], visible[0]["origin"][1])
-                        out.append(Cell(page_no, stripped, bbox, origin, s["size"],
-                                        fonts[s["font"]], s["color"]))
-    return out
 
 
 def _words(text: str) -> list[str]:
@@ -242,32 +154,35 @@ def _parse_summary(candidates: list[Cell], parsed: ParsedStatement) -> None:
             parsed.summary_cells[key] = value
 
 
-def parse_statement(pdf_path: str | Path) -> ParsedStatement:
-    """Parse the account summary and transaction rows printed in ``pdf_path``."""
-    import pymupdf
-
+def parse_cells(cells: list[Cell], pages: int) -> ParsedStatement:
+    """Parse the account summary and transaction rows from the cells of a document."""
     parsed = ParsedStatement()
-    with pymupdf.open(pdf_path) as doc:
-        cells = read_cells(doc)
-        pages = doc.page_count
-
-    by_page = {p: [c for c in cells if c.page == p] for p in range(pages)}
+    by_page: dict[int, list[Cell]] = {p: [] for p in range(pages)}
+    for c in cells:
+        by_page[c.page].append(c)
     used: set[int] = set()  # ids of cells that belong to the header or table rows
     index = 0
+    cols: dict[str, float] | None = None
     for page_no in range(pages):
         page_cells = by_page[page_no]
         header = _find_header(page_cells)
-        if header is None:
+        if header is not None:
+            cols, band_top, band_bottom, band = header
+            parsed.header_labels[page_no] = [c.text for c in sorted(band, key=lambda c: (
+                c.bbox[0], c.bbox[1]))]
+            parsed.header_top.setdefault(page_no, band_top)
+            used.update(id(c) for c in page_cells
+                        if band_top - 1 <= c.bbox[1] and c.bbox[3] <= band_bottom + 1)
+        elif cols is not None:
+            band_bottom = float("-inf")  # the table continues from the top of the page
+        else:
             continue
-        cols, band_top, band_bottom, band = header
         parsed.columns[page_no] = cols
-        parsed.header_labels[page_no] = [c.text for c in sorted(band, key=lambda c: (c.bbox[0], c.bbox[1]))]
-        parsed.header_top.setdefault(page_no, band_top)
-        used.update(id(c) for c in page_cells if band_top - 1 <= c.bbox[1] and c.bbox[3] <= band_bottom + 1)
 
         body = sorted((c for c in page_cells if c.bbox[1] >= band_bottom),
                       key=lambda c: (c.baseline, c.bbox[0]))
-        balances = [c for c in body if parse_amount(c.text) is not None and _assign(cols, c) == "balance"]
+        balances = [c for c in body if parse_amount(c.text) is not None
+                    and _assign(cols, c) == "balance"]
         for bal in balances:
             line = [c for c in body if abs(c.baseline - bal.baseline) < 1.5]
             if any(OPENING_RE.match(c.text) for c in line):
@@ -277,8 +192,8 @@ def parse_statement(pdf_path: str | Path) -> ParsedStatement:
                                          {"balance": bal})
                 used.update(id(c) for c in line)
                 continue
-            dates = sorted((c for c in line if DATE_RE.match(c.text) and c.bbox[2] < min(cols.values())),
-                           key=lambda c: c.bbox[0])
+            dates = sorted((c for c in line if DATE_RE.match(c.text)
+                            and c.bbox[2] < min(cols.values())), key=lambda c: c.bbox[0])
             if not dates:
                 continue  # a balance-like number without a date: not a transaction row
             row_cells = {"date": dates[0], "balance": bal}
@@ -303,3 +218,13 @@ def parse_statement(pdf_path: str | Path) -> ParsedStatement:
     if not parsed.rows:
         parsed.warnings.append("No transaction table found")
     return parsed
+
+
+def parse_statement(pdf_path: str | Path, password: str | None = None) -> ParsedStatement:
+    """Parse the account summary and transaction rows printed in ``pdf_path``.
+
+    Raises ``PasswordRequired`` or ``UnreadablePDF`` (see ``forgelens.reader.document``)
+    when the file cannot be opened.
+    """
+    with open_pdf(pdf_path, password) as doc:
+        return parse_cells(read_cells(doc), doc.page_count)

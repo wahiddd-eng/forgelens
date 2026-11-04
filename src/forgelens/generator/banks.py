@@ -24,9 +24,13 @@ DEFAULT_LABELS = {
     "balance": "Balance",
 }
 
-SANS = "Arial, 'Liberation Sans', 'Nimbus Sans', sans-serif"
-SERIF = "'Times New Roman', 'Liberation Serif', 'Nimbus Roman', serif"
-CALIBRI = "Calibri, Carlito, 'Liberation Sans', sans-serif"
+# Font stacks put the free fonts first so a statement renders the same on every machine
+# that has them installed (Liberation and Carlito are metric-compatible with Arial, Times
+# New Roman and Calibri). The proprietary names are only fallbacks. ``primary_font`` is
+# the font the generator expects; ``render_pdf`` warns when another one was used.
+SANS = "'Liberation Sans', Arial, 'Nimbus Sans', sans-serif"
+SERIF = "'Liberation Serif', 'Times New Roman', 'Nimbus Roman', serif"
+CALIBRI = "Carlito, Calibri, 'Liberation Sans', sans-serif"
 DEJAVU = "'DejaVu Sans', Verdana, Arial, sans-serif"
 DEJAVU_CONDENSED = "'DejaVu Sans Condensed', 'Arial Narrow', 'Liberation Sans Narrow', sans-serif"
 DEJAVU_SERIF = "'DejaVu Serif', Georgia, 'Liberation Serif', serif"
@@ -64,6 +68,11 @@ class BankProfile:
 
     def label(self, key: str) -> str:
         return self.labels.get(key, DEFAULT_LABELS[key])
+
+    @property
+    def primary_font(self) -> str:
+        """The first family in ``font_family``, e.g. ``Liberation Sans``."""
+        return self.font_family.split(",")[0].strip().strip("'\"")
 
     @property
     def number_format(self) -> dict:

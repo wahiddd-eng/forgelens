@@ -35,7 +35,7 @@ from pathlib import Path
 from faker import Faker
 
 from ..generator.money import format_amount, to_money
-from ..signals.pdf_structure.analyzer import _font_key
+from ..reader import font_key
 
 OPERATIONS = ("credit_amount", "closing_balance", "holder_name")
 SAVE_MODES = ("incremental", "rewrite")
@@ -55,11 +55,6 @@ _FONT_DIRS = (
 _font_index_cache: dict[tuple[str, str], str] | None = None
 
 
-def _key(name: str) -> tuple[str, str]:
-    family, style = _font_key(name)
-    return family.replace("semicondensed", "condensed"), style
-
-
 def _font_index() -> dict[tuple[str, str], str]:
     """Map (family, style) to a font file on this machine, keyed from file names."""
     global _font_index_cache
@@ -71,7 +66,8 @@ def _font_index() -> dict[tuple[str, str], str]:
             for dirpath, _, files in os.walk(root):
                 for f in files:
                     if f.lower().endswith((".ttf", ".otf")):
-                        index.setdefault(_key(os.path.splitext(f)[0]), os.path.join(dirpath, f))
+                        path = os.path.join(dirpath, f)
+                        index.setdefault(font_key(os.path.splitext(f)[0]), path)
         _font_index_cache = index
     return _font_index_cache
 
@@ -94,7 +90,7 @@ class _FontKit:
 
     def _resolve(self, span_font: str):
         if span_font not in self._resolved:
-            family, style = _key(span_font)
+            family, style = font_key(span_font)
             path = _font_index().get((family, style)) if self.requested == "matched" else None
             if path:
                 name = f"FL{len(self._resolved)}"
@@ -193,8 +189,10 @@ def _plan(record: dict, operation: str, consistent: bool, rng: random.Random, se
         delta = new - old
         target["credit"] = str(new)
         edit("credit", rows[r]["amount"], amt(new), "right", r)
-        claimed["total_credits"] = str(to_money(Decimal(claimed["total_credits"]) + delta))
         if consistent:
+            # A careless forger (consistent=False) leaves the summary as it was, so only a
+            # consistent forgery claims the new total.
+            claimed["total_credits"] = str(to_money(Decimal(claimed["total_credits"]) + delta))
             for t in txns[r:]:
                 t["balance"] = str(to_money(Decimal(t["balance"]) + delta))
                 edit("balance", rows[t["row"]]["balance"], bal(Decimal(t["balance"])),
@@ -232,6 +230,64 @@ def _plan(record: dict, operation: str, consistent: bool, rng: random.Random, se
     raise ValueError(f"Unknown operation '{operation}'. Choose from {', '.join(OPERATIONS)}")
 
 
+def _apply(path: Path, record: dict, edits: list[dict], save_mode: str, font_strategy: str,
+           rng: random.Random):
+    """Make ``edits`` in the PDF at ``path`` (in place) and save it with ``save_mode``."""
+    import pymupdf
+
+    doc = pymupdf.open(path)
+    fonts = _FontKit(font_strategy)
+    scale = 2.0
+    try:
+        by_page: dict[int, list[dict]] = {}
+        for e in edits:
+            by_page.setdefault(e["span"]["page"], []).append(e)
+
+        for page_no, page_edits in by_page.items():
+            page = doc[page_no]
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
+            for e in page_edits:
+                e["fill"] = _background(pix, e["span"]["bbox"], scale)
+                page.add_redact_annot(pymupdf.Rect(e["span"]["bbox"]), fill=e["fill"])
+            page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
+                                  graphics=pymupdf.PDF_REDACT_LINE_ART_NONE)
+            for e in page_edits:
+                span = e["span"]
+                fonts.ensure(page, span["font"])
+                width = fonts.width(e["new"], span["size"], span["font"])
+                x0 = span["bbox"][2] - width if e["align"] == "right" else span["bbox"][0]
+                page.insert_text((x0, span["origin"][1]), e["new"], fontname=fonts.name(span["font"]),
+                                 fontsize=span["size"], color=_rgb(span["color"]))
+                new_bbox = [x0, span["bbox"][1], x0 + width, span["bbox"][3]]
+                e["new_bbox"] = [round(v, 3) for v in new_bbox]
+                e["mask_bbox"] = [round(v, 3) for v in (
+                    min(span["bbox"][0], new_bbox[0]), span["bbox"][1],
+                    max(span["bbox"][2], new_bbox[2]), span["bbox"][3])]
+
+        generated = date.fromisoformat(record["generated_on"])
+        edited_at = datetime.combine(generated, datetime.min.time()) + timedelta(
+            days=rng.randint(2, 60), hours=rng.randint(9, 22), minutes=rng.randint(0, 59))
+        metadata_updated = save_mode == "rewrite" or rng.random() < 0.5
+        if metadata_updated:
+            meta = dict(doc.metadata)
+            meta["modDate"] = _pdf_date(edited_at)
+            doc.set_metadata(meta)
+
+        if save_mode == "incremental":
+            doc.saveIncr()
+            doc.close()
+        else:
+            tmp = path.with_suffix(".tmp.pdf")
+            doc.save(tmp, garbage=3, deflate=True)
+            doc.close()
+            os.replace(tmp, path)
+        return edited_at, metadata_updated, fonts
+    except BaseException:
+        if not doc.is_closed:
+            doc.close()
+        raise
+
+
 def forge(
     genuine_pdf: str | Path,
     record: dict,
@@ -249,8 +305,6 @@ def forge(
     including its ``layout``. ``save_mode`` and ``font_strategy`` are chosen at random
     from ``seed`` when not given.
     """
-    import pymupdf
-
     if "layout" not in record:
         raise ValueError("record has no 'layout'; regenerate it with the current generator")
     rng = random.Random(seed)
@@ -263,53 +317,17 @@ def forge(
 
     out_pdf = Path(out_pdf)
     out_pdf.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(genuine_pdf, out_pdf)
-    doc = pymupdf.open(out_pdf)
-    fonts = _FontKit(font_strategy)
-    scale = 2.0
-
-    by_page: dict[int, list[dict]] = {}
-    for e in edits:
-        by_page.setdefault(e["span"]["page"], []).append(e)
-
-    for page_no, page_edits in by_page.items():
-        page = doc[page_no]
-        pix = page.get_pixmap(matrix=pymupdf.Matrix(scale, scale), alpha=False)
-        for e in page_edits:
-            e["fill"] = _background(pix, e["span"]["bbox"], scale)
-            page.add_redact_annot(pymupdf.Rect(e["span"]["bbox"]), fill=e["fill"])
-        page.apply_redactions(images=pymupdf.PDF_REDACT_IMAGE_NONE,
-                              graphics=pymupdf.PDF_REDACT_LINE_ART_NONE)
-        for e in page_edits:
-            span = e["span"]
-            fonts.ensure(page, span["font"])
-            width = fonts.width(e["new"], span["size"], span["font"])
-            x0 = span["bbox"][2] - width if e["align"] == "right" else span["bbox"][0]
-            page.insert_text((x0, span["origin"][1]), e["new"], fontname=fonts.name(span["font"]),
-                             fontsize=span["size"], color=_rgb(span["color"]))
-            new_bbox = [x0, span["bbox"][1], x0 + width, span["bbox"][3]]
-            e["new_bbox"] = [round(v, 3) for v in new_bbox]
-            e["mask_bbox"] = [round(v, 3) for v in (
-                min(span["bbox"][0], new_bbox[0]), span["bbox"][1],
-                max(span["bbox"][2], new_bbox[2]), span["bbox"][3])]
-
-    generated = date.fromisoformat(record["generated_on"])
-    edited_at = datetime.combine(generated, datetime.min.time()) + timedelta(
-        days=rng.randint(2, 60), hours=rng.randint(9, 22), minutes=rng.randint(0, 59))
-    metadata_updated = save_mode == "rewrite" or rng.random() < 0.5
-    if metadata_updated:
-        meta = dict(doc.metadata)
-        meta["modDate"] = _pdf_date(edited_at)
-        doc.set_metadata(meta)
-
-    if save_mode == "incremental":
-        doc.saveIncr()
-        doc.close()
-    else:
-        tmp = out_pdf.with_suffix(".tmp.pdf")
-        doc.save(tmp, garbage=3, deflate=True)
-        doc.close()
-        os.replace(tmp, out_pdf)
+    # Work on a temporary copy and move it into place only when the forgery is complete, so
+    # a failure never leaves an unedited copy of the genuine file under a forgery's name.
+    work = out_pdf.with_name(out_pdf.stem + ".partial.pdf")
+    shutil.copyfile(genuine_pdf, work)
+    try:
+        edited_at, metadata_updated, fonts = _apply(work, record, edits, save_mode,
+                                                    font_strategy, rng)
+        os.replace(work, out_pdf)
+    finally:
+        work.unlink(missing_ok=True)
+        work.with_suffix(".tmp.pdf").unlink(missing_ok=True)
 
     variant = operation + ("_consistent" if consistent else "")
     claimed.update({
