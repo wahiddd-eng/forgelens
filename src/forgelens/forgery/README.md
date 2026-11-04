@@ -37,6 +37,21 @@ python scripts/forge_pdf_edits.py --genuine data/synthetic/genuine/himalaya_nati
     --out data/synthetic/forged/pdf_edit --per-statement 2 --seed 0 --masks --dpi 150
 ```
 
+## Template-rebuilt forgeries (`rebuild.py`)
+
+The forger regenerates the whole statement with better numbers instead of editing the PDF. Every salary credit (or incoming transfer, else the largest credit) is inflated by 1.4–2.5×, and every later balance, the totals and the closing balance are recomputed, so the arithmetic is fully consistent. In 30% of cases the holder's name is also replaced.
+
+| Variant | How it is rendered | Detectable from the document? |
+| --- | --- | --- |
+| `rebuilt_exact` | The bank's real template and settings (insider or perfect copy) | No: needs an external check |
+| `rebuilt_imitation` | An imitation: different font, text size ±0.3–0.8 pt, often a different "Creator" | Yes, by the template signal |
+
+Labels list every changed cell with its position in the new PDF, so masks work as for PDF edits.
+
+```bash
+python scripts/forge_rebuild.py --genuine data/synthetic/genuine --out data/synthetic/forged/rebuild --masks
+```
+
 ## Laundering (`launder.py`)
 
 Re-saves a genuine or forged statement the way people do, to strip file-level traces:

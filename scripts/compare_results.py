@@ -2,8 +2,8 @@
 
 Example:
     python scripts/compare_results.py --results experiments/results \
-        --tags pdfedit_v1_himalaya pdfedit_v1_himalaya_reprint pdfedit_v1_himalaya_raster \
-        --names Original Reprinted Rasterised --out experiments/results/robustness_v1.md
+        --tags v3 v3_reprint v3_raster --names Original Reprinted Rasterised \
+        --out experiments/results/robustness_v3.md
 """
 
 from __future__ import annotations
@@ -12,7 +12,8 @@ import argparse
 import json
 from pathlib import Path
 
-SIGNALS = (("financial", "Financial"), ("structure", "PDF structure"), ("either", "Either"))
+NAMES = {"financial": "Financial", "structure": "PDF structure", "template": "Template",
+         "either": "Any signal"}
 
 
 def _fmt(x) -> str:
@@ -32,19 +33,22 @@ def main() -> None:
 
     summaries = [json.loads((args.results / f"signals_{t}_summary.json").read_text())
                  for t in args.tags]
-    header = "| Condition | " + " | ".join(n for _, n in SIGNALS) + " | Abstained (fin / struct) |"
+    signals = summaries[0].get("signals", ["financial", "structure", "either"])
+    base = [s for s in signals if s != "either"]
     lines = ["# Robustness of rule-based signals to laundering", "",
              "Recall on forgeries (false-positive rate on genuine statements in brackets).", "",
-             header, "| --- | --- | --- | --- | --- |"]
+             "| Condition | " + " | ".join(NAMES[s] for s in signals) + " | Abstained ("
+             + " / ".join(NAMES[s] for s in base) + ") |",
+             "| --- | " + " | ".join("---" for _ in signals) + " | --- |"]
     for name, s in zip(names, summaries):
         cells = [f"{_fmt(s['overall'][k]['recall'])} ({_fmt(s['overall'][k]['false_positive_rate'])})"
-                 for k, _ in SIGNALS]
+                 for k in signals]
         ab = s.get("abstention_rate", {})
-        cells.append(f"{_fmt(ab.get('financial'))} / {_fmt(ab.get('structure'))}")
+        cells.append(" / ".join(_fmt(ab.get(k)) for k in base))
         lines.append(f"| {name} | " + " | ".join(cells) + " |")
 
     variants = sorted(summaries[0]["flag_rate_by_variant"])
-    lines += ["", "Flag rate of the combined signals (either) by forgery type:", "",
+    lines += ["", "Flag rate of any signal by forgery type:", "",
               "| Forgery type | " + " | ".join(names) + " |",
               "| --- | " + " | ".join("---" for _ in names) + " |"]
     for v in variants:

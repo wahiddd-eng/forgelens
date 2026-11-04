@@ -77,6 +77,36 @@ class Statement:
     def credit_count(self) -> int:
         return sum(1 for t in self.transactions if t.credit > 0)
 
+    @classmethod
+    def from_ground_truth(cls, record: dict) -> Statement:
+        """Rebuild a statement from its ground-truth record (the inverse of ``ground_truth``)."""
+        txns = [
+            Transaction(
+                txn_date=date.fromisoformat(t["txn_date"]),
+                value_date=date.fromisoformat(t["value_date"]),
+                narration=t["narration"],
+                reference=t["reference"],
+                debit=Decimal(t["debit"]),
+                credit=Decimal(t["credit"]),
+                balance=Decimal(t["balance"]),
+                category=t.get("category", ""),
+            )
+            for t in record["transactions"]
+        ]
+        return cls(
+            statement_id=record["statement_id"],
+            bank_id=record["bank_id"],
+            layout=record.get("template", ""),
+            seed=record["seed"],
+            period_start=date.fromisoformat(record["period_start"]),
+            period_end=date.fromisoformat(record["period_end"]),
+            generated_on=date.fromisoformat(record["generated_on"]),
+            customer=Customer(**record["customer"]),
+            opening_balance=Decimal(record["opening_balance"]),
+            transactions=txns,
+            number_format=dict(record.get("format", {})),
+        )
+
     def ground_truth(self) -> dict:
         """Return a JSON-serialisable record of everything in the statement.
 

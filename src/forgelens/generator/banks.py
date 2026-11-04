@@ -60,6 +60,7 @@ class BankProfile:
     narration_style: str = "slash"  # slash | hyphen | transfer
     base_font_size: float = 8.4
     branch_address: str = ""
+    meta_generator: str = ""  # PDF "Creator" value; empty = the template's default
 
     def label(self, key: str) -> str:
         return self.labels.get(key, DEFAULT_LABELS[key])

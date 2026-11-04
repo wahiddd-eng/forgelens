@@ -99,6 +99,8 @@ class ParsedStatement:
     summary_cells: dict[str, Cell] = field(default_factory=dict)
     summary_counts: dict[str, int] = field(default_factory=dict)
     columns: dict[int, dict[str, float]] = field(default_factory=dict)  # page -> right edges
+    header_labels: dict[int, list[str]] = field(default_factory=dict)  # page -> header texts
+    header_top: dict[int, float] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -188,7 +190,7 @@ def _is_credit_label(text: str) -> bool:
 
 
 def _find_header(cells: list[Cell]):
-    """Return (columns, band_top, band_bottom) for the table header on one page, or None."""
+    """Return (columns, band_top, band_bottom, band_cells) for the table header, or None."""
     for bal in cells:
         if "balance" not in bal.text.lower() or len(bal.text) > 30 or bal.text.lower().startswith(
                 ("opening", "total")):
@@ -206,7 +208,8 @@ def _find_header(cells: list[Cell]):
         below = [c for c in cells if bottom <= c.bbox[1] <= bottom + 60]
         if not any(DATE_RE.match(c.text) or OPENING_RE.match(c.text) for c in below):
             continue  # a summary box with similar labels, not the table header
-        return {"debit": debit.bbox[2], "credit": credit.bbox[2], "balance": bal.bbox[2]}, top, bottom
+        cols = {"debit": debit.bbox[2], "credit": credit.bbox[2], "balance": bal.bbox[2]}
+        return cols, top, bottom, band
     return None
 
 
@@ -256,8 +259,10 @@ def parse_statement(pdf_path: str | Path) -> ParsedStatement:
         header = _find_header(page_cells)
         if header is None:
             continue
-        cols, band_top, band_bottom = header
+        cols, band_top, band_bottom, band = header
         parsed.columns[page_no] = cols
+        parsed.header_labels[page_no] = [c.text for c in sorted(band, key=lambda c: (c.bbox[0], c.bbox[1]))]
+        parsed.header_top.setdefault(page_no, band_top)
         used.update(id(c) for c in page_cells if band_top - 1 <= c.bbox[1] and c.bbox[3] <= band_bottom + 1)
 
         body = sorted((c for c in page_cells if c.bbox[1] >= band_bottom),

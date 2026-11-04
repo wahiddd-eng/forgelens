@@ -1,14 +1,15 @@
 """Evaluate the rule-based signals, alone and combined, on genuine and forged statements.
 
-Signals: financial consistency (``financial``), PDF structure (``structure``) and their
-combination (``either``: forged if either signal fires). A signal that cannot read a file
-(for example an image-only PDF) abstains: the file counts as not flagged, and abstentions
-are reported separately. Also reports how many edited values the structure signal points
-at (edit localisation recall).
+Signals: financial consistency (``financial``), PDF structure (``structure``) and, when a
+template-profile file is given, template matching (``template``). ``either`` flags a file
+when any of them fires. A signal that cannot read a file (an image-only PDF, an unknown bank)
+abstains: the file counts as not flagged by it, and abstentions are reported separately.
+Also reports how many edited values each localising signal points at.
 
 Example:
-    python scripts/eval_signals.py --genuine data/synthetic/genuine/himalaya_national \
-        --forged data/synthetic/forged/pdf_edit --out experiments/results --tag pdfedit_v1
+    python scripts/eval_signals.py --genuine data/synthetic/genuine \
+        --forged data/synthetic/forged --templates experiments/templates.json \
+        --out experiments/results --tag v3
 """
 
 from __future__ import annotations
@@ -21,8 +22,10 @@ from pathlib import Path
 
 from forgelens.signals.financial import check_statement
 from forgelens.signals.pdf_structure import analyze_pdf
+from forgelens.signals.template import TemplateMatcher
 
-SIGNALS = ("financial", "structure", "either")
+NAMES = {"financial": "Financial", "structure": "PDF structure", "template": "Template",
+         "either": "Any signal"}
 
 
 def _overlaps(a, b) -> bool:
@@ -58,11 +61,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--genuine", type=Path, required=True)
     parser.add_argument("--forged", type=Path, required=True)
+    parser.add_argument("--templates", type=Path, help="profiles from scripts/fit_templates.py")
     parser.add_argument("--out", type=Path, default=Path("experiments/results"))
     parser.add_argument("--tag", default="v1")
     args = parser.parse_args()
 
-    rows, edits_total, edits_found = [], 0, 0
+    matcher = TemplateMatcher.load(args.templates) if args.templates else None
+    signals = ["financial", "structure"] + (["template"] if matcher else [])
+    all_signals = signals + ["either"]
+
+    rows = []
+    loc = {s: [0, 0] for s in ("structure", "template")}
     for folder in (args.genuine, args.forged):
         for json_path in sorted(folder.rglob("*.json")):
             record = json.loads(json_path.read_text())
@@ -88,43 +97,49 @@ def main() -> None:
                 "financial_checks": ";".join(sorted({f.check for f in fin.findings})),
                 "structure_checks": ";".join(sorted({f.check for f in struct.findings})),
             }
-            row["either"] = row["financial"] or row["structure"]
+            located = {"structure": struct.locations()}
+            if matcher:
+                tpl = matcher.check(pdf)
+                row.update({"template": tpl.suspicious, "template_abstained": tpl.abstained,
+                            "template_score": tpl.score,
+                            "template_checks": ";".join(sorted({f.check for f in tpl.findings}))})
+                located["template"] = tpl.locations()
+            row["either"] = any(row[s] for s in signals)
             rows.append(row)
-            locations = struct.locations()
-            for e in record.get("edits", []):
-                edits_total += 1
-                edits_found += any(loc["page"] == e["page"] and _overlaps(loc["bbox"], e["new_bbox"])
-                                   for loc in locations)
+            for s, locations in located.items():
+                for e in record.get("edits", []):
+                    loc[s][1] += 1
+                    loc[s][0] += any(lc["page"] == e["page"] and _overlaps(lc["bbox"], e["new_bbox"])
+                                     for lc in locations)
     if not rows:
         raise SystemExit("No statements found")
 
-    by_variant = defaultdict(list)
-    for r in rows:
-        by_variant[r["variant"]].append(r)
     summary = {
         "tag": args.tag,
+        "signals": all_signals,
         "counts": {"genuine": sum(r["label"] == "genuine" for r in rows),
                    "forged": sum(r["label"] == "forged" for r in rows)},
-        "overall": {s: _metrics(rows, s) for s in SIGNALS},
+        "overall": {s: _metrics(rows, s) for s in all_signals},
         "flag_rate_by_variant": {
-            v: {"n": len(rs), **{s: round(sum(r[s] for r in rs) / len(rs), 4) for s in SIGNALS}}
-            for v, rs in sorted(by_variant.items())
+            v: {"n": len(rs), **{s: round(sum(r[s] for r in rs) / len(rs), 4) for s in all_signals}}
+            for v, rs in sorted(_group(rows, "variant").items())
         },
         "abstention_rate": {
-            "financial": round(sum(r["financial_abstained"] for r in rows) / len(rows), 4),
-            "structure": round(sum(r["structure_abstained"] for r in rows) / len(rows), 4),
+            s: round(sum(r[f"{s}_abstained"] for r in rows) / len(rows), 4) for s in signals
         },
         "by_bank": {
             bank: {
                 "n": len(rs),
-                **{f"{s}_recall": _metrics(rs, s)["recall"] for s in SIGNALS},
-                **{f"{s}_fpr": _metrics(rs, s)["false_positive_rate"] for s in SIGNALS},
+                **{f"{s}_recall": _metrics(rs, s)["recall"] for s in all_signals},
+                **{f"{s}_fpr": _metrics(rs, s)["false_positive_rate"] for s in all_signals},
             }
             for bank, rs in sorted(_group(rows, "bank_id").items())
         },
-        "structure_edit_localisation_recall": (round(edits_found / edits_total, 4)
-                                               if edits_total else None),
-        "edits_total": edits_total,
+        "edit_localisation_recall": {
+            s: (round(found / total, 4) if total else None)
+            for s, (found, total) in loc.items() if s in signals
+        },
+        "edits_total": loc["structure"][1],
     }
 
     args.out.mkdir(parents=True, exist_ok=True)
@@ -138,35 +153,33 @@ def main() -> None:
     def pct(x):
         return "n/a" if x is None else f"{x:.3f}"
 
-    lines = [
-        f"# Rule-based signals — {args.tag}",
-        "",
-        f"Genuine: {summary['counts']['genuine']} · Forged: {summary['counts']['forged']}",
-        "",
-        "| Metric | Financial | PDF structure | Either |",
-        "| --- | --- | --- | --- |",
-    ]
+    head = " | ".join(NAMES[s] for s in all_signals)
+    rule = " | ".join("---" for _ in all_signals)
+    lines = [f"# Rule-based signals — {args.tag}", "",
+             f"Genuine: {summary['counts']['genuine']} · Forged: {summary['counts']['forged']}", "",
+             f"| Metric | {head} |", f"| --- | {rule} |"]
     for metric in ("precision", "recall", "f1", "accuracy", "false_positive_rate"):
         label = metric.replace("_", " ").capitalize()
         lines.append(f"| {label} | " + " | ".join(pct(summary["overall"][s][metric])
-                                                   for s in SIGNALS) + " |")
-    ab = summary["abstention_rate"]
-    lines.append(f"| Abstained (unreadable) | {ab['financial']:.3f} | {ab['structure']:.3f} | — |")
-    lines += ["", "| Variant | n | Financial | PDF structure | Either |",
-              "| --- | --- | --- | --- | --- |"]
+                                                   for s in all_signals) + " |")
+    lines.append("| Abstained | " + " | ".join(pct(summary["abstention_rate"].get(s))
+                                              if s != "either" else "—" for s in all_signals) + " |")
+    lines += ["", f"| Variant | n | {head} |", f"| --- | --- | {rule} |"]
     for v, d in summary["flag_rate_by_variant"].items():
-        lines.append(f"| {v} | {d['n']} | " + " | ".join(f"{d[s]:.1%}" for s in SIGNALS) + " |")
+        lines.append(f"| {v} | {d['n']} | " + " | ".join(f"{d[s]:.1%}" for s in all_signals) + " |")
     if len(summary["by_bank"]) > 1:
-        lines += ["", "| Bank | n | Financial recall | Structure recall | Either recall | Either FPR |",
-                  "| --- | --- | --- | --- | --- | --- |"]
+        bank_head = " | ".join(NAMES[s] + " recall" for s in all_signals)
+        lines += ["", f"| Bank | n | {bank_head} | Any-signal FPR |",
+                  f"| --- | --- | {rule} | --- |"]
         for bank, d in summary["by_bank"].items():
-            lines.append(f"| {bank} | {d['n']} | {pct(d['financial_recall'])} | "
-                         f"{pct(d['structure_recall'])} | {pct(d['either_recall'])} | "
-                         f"{pct(d['either_fpr'])} |")
-    if summary["structure_edit_localisation_recall"] is not None:
-        recall = summary["structure_edit_localisation_recall"]
-        note = f"PDF-structure edit localisation recall: {recall:.1%} of {edits_total} edited values"
-        lines += ["", note]
+            lines.append(f"| {bank} | {d['n']} | "
+                         + " | ".join(pct(d[f"{s}_recall"]) for s in all_signals)
+                         + f" | {pct(d['either_fpr'])} |")
+    for s, value in summary["edit_localisation_recall"].items():
+        if value is not None:
+            note = (f"{NAMES[s]} edit localisation recall: {value:.1%} of "
+                    f"{summary['edits_total']} edited values")
+            lines += ["", note]
     Path(f"{stem}_summary.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
 

@@ -7,6 +7,7 @@ statement. Merchants, employers, lenders and counterparty banks are invented.
 from __future__ import annotations
 
 import calendar
+import hashlib
 import random
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -253,9 +254,11 @@ def build_statement(seed: int, bank: BankProfile, months: int = 3,
     """
     if not 1 <= months <= 12:
         raise ValueError("months must be between 1 and 12")
-    rng = random.Random(seed)
+    # Mix the bank into the seed so the same seed gives different customers at each bank.
+    mixed = int(hashlib.sha256(f"{bank.bank_id}:{seed}".encode()).hexdigest()[:15], 16)
+    rng = random.Random(mixed)
     fake = Faker("en_IN")
-    fake.seed_instance(seed)
+    fake.seed_instance(mixed)
 
     if period_end is None:
         end_month = date(2025, 1, 1) + timedelta(days=rng.randint(0, 640))
