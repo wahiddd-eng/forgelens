@@ -9,7 +9,7 @@ For each seed: a multi-page PDF statement and a ground-truth JSON file with the 
 - Indian-style transactions: salary (NEFT), UPI debits and credits, rent, EMI (ACH), bill payments (BBPS), ATM withdrawals, card (POS) payments, IMPS transfers, cheque deposits, quarterly interest and SMS charges.
 - Running balances are computed row by row with exact decimal arithmetic, so every row, the summary box and the closing balance always agree.
 - Amounts use Indian digit grouping (`12,34,567.50`).
-- The same seed always produces the same statement, down to the bytes of the PDF on a given set of installed fonts: embedded-font timestamps are pinned to the statement's date (`SOURCE_DATE_EPOCH`), not the time of rendering.
+- The same seed always produces the same statement, down to the bytes of the PDF on the same set-up (installed fonts and libraries): embedded-font timestamps are pinned to the statement's date (`SOURCE_DATE_EPOCH`), not the time of rendering. Different machines can still subset fonts differently (WeasyPrint uses HarfBuzz when it is installed, fontTools otherwise), so compare datasets by content, not by file hash.
 - Statement periods end between 31 Jul 2024 and 30 Jun 2026, so every date derived from a statement (generation, forgery edits, re-saves) lies before the dataset was made.
 
 ## Fonts and machines

@@ -138,3 +138,37 @@ def test_editing_a_signed_statement_is_caught(genuine, tmp_path, pdf_tools, save
 def test_font_key_treats_semi_condensed_as_condensed():
     assert font_key("DejaVu-Sans-Semi-Condensed") == font_key("DejaVu Sans Condensed")
     assert font_key("ABCDEF+DejaVuSansCondensed-Bold") == ("dejavusanscondensed", "bold")
+
+
+def test_columns_are_found_when_header_labels_overflow_them(tmp_path):
+    """A larger imitation font made the WITHDRAWALS label overflow its column, so amounts no
+    longer ended near the label's right edge and two rebuilt forgeries could not be read."""
+    from dataclasses import replace
+
+    from forgelens.generator.banks import DEJAVU_SERIF
+
+    bank = get_bank("sahyadri")
+    big = replace(bank, font_family=DEJAVU_SERIF, base_font_size=bank.base_font_size + 0.8)
+    st = build_statement(seed=2022, bank=bank, months=3)
+    pdf = render_pdf(st, big, tmp_path / "big.pdf", check_fonts=False)
+    parsed = parse_statement(pdf)
+    assert [r.balance for r in parsed.rows] == [t.balance for t in st.transactions]
+    assert check_statement(pdf).consistent
+
+
+@pytest.mark.parametrize("bank_id", sorted(BANKS))
+def test_columns_are_found_when_header_labels_are_centred(tmp_path, bank_id):
+    """Many banks centre the header labels over columns of right-aligned amounts."""
+    from weasyprint import HTML
+
+    from forgelens.generator import render_html
+
+    bank = get_bank(bank_id)
+    st = build_statement(seed=8, bank=bank, months=2)
+    html = render_html(st, bank).replace(
+        "</style>", "th, th.num { text-align: center !important; }</style>", 1)
+    out = tmp_path / "centred.pdf"
+    HTML(string=html).write_pdf(out)
+    parsed = parse_statement(out)
+    assert [r.balance for r in parsed.rows] == [t.balance for t in st.transactions]
+    assert check_statement(out).consistent

@@ -147,7 +147,8 @@ def _revisions(raw: bytes) -> dict:
     """Count the file's save sections and how many of them a genuine file can explain."""
     sections = raw.count(b"startxref")
     linearized = bool(_LINEARIZED.search(raw[:4096]))
-    ranges = [tuple(int(v) for v in m) for m in _BYTE_RANGE.findall(raw)]
+    ranges = [r for r in (tuple(int(v) for v in m) for m in _BYTE_RANGE.findall(raw))
+              if any(r)]  # an all-zero range is an unfilled placeholder, not a signature
     signed_ends = sorted({c + d for _, _, c, d in ranges})
     # The gap in a byte range is the signature's /Contents hex string, "<...>".
     broken = [r for r in ranges

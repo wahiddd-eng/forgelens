@@ -6,8 +6,10 @@ works on forged and real statements alike and on many layouts:
 * The table header is the line that has a balance label plus debit- and credit-like labels
   (``Withdrawal``/``Debit``/``Dr``, ``Deposit``/``Credit``/``Cr``) and is followed by dated
   rows. Labels that start with "Total" (summary boxes) are ignored.
-* Numeric columns are right-aligned, so each amount is assigned to the column whose header
-  has the nearest right edge.
+* Numeric columns are right-aligned, so each amount is assigned to the column whose right
+  edge is nearest. The edge is measured from the amounts under each header label, because a
+  label may be centred over its column or overflow it; the label's own right edge is the
+  fallback.
 * Every transaction row has a balance cell; the row's date is the leftmost date on that
   line. A line reading "Opening balance" (or "B/F") is the opening-balance row.
 * Pages that continue the table without repeating its header use the columns of the last
@@ -21,8 +23,10 @@ works on forged and real statements alike and on many layouts:
 from __future__ import annotations
 
 import re
+import statistics
 from dataclasses import dataclass, field
 from decimal import Decimal
+from itertools import pairwise
 from pathlib import Path
 
 from .cells import Cell, read_cells
@@ -102,7 +106,10 @@ def _is_credit_label(text: str) -> bool:
 
 
 def _find_header(cells: list[Cell]):
-    """Return (columns, band_top, band_bottom, band_cells) for the table header, or None."""
+    """Return (labels, band_top, band_bottom, band_cells) for the table header, or None.
+
+    ``labels`` maps ``debit``, ``credit`` and ``balance`` to their header cells.
+    """
     for bal in cells:
         if "balance" not in bal.text.lower() or len(bal.text) > 30 or bal.text.lower().startswith(
                 ("opening", "total")):
@@ -120,9 +127,50 @@ def _find_header(cells: list[Cell]):
         below = [c for c in cells if bottom <= c.bbox[1] <= bottom + 60]
         if not any(DATE_RE.match(c.text) or OPENING_RE.match(c.text) for c in below):
             continue  # a summary box with similar labels, not the table header
-        cols = {"debit": debit.bbox[2], "credit": credit.bbox[2], "balance": bal.bbox[2]}
-        return cols, top, bottom, band
+        return {"debit": debit, "credit": credit, "balance": bal}, top, bottom, band
     return None
+
+
+def _under(label: Cell, cell: Cell) -> bool:
+    """True when an amount sits under a header label or ends near the label's right edge."""
+    overlaps = cell.bbox[0] < label.bbox[2] and cell.bbox[2] > label.bbox[0]
+    return overlaps or abs(cell.bbox[2] - label.bbox[2]) < 14
+
+
+def _densest_median(values: list[float], width: float = 2.0) -> tuple[float, int]:
+    """Median and size of the largest group of values that lie within ``width`` of each other."""
+    values = sorted(values)
+    best, start = (0, 0, -1), 0
+    for end in range(len(values)):
+        while values[end] - values[start] > width:
+            start += 1
+        if end - start + 1 > best[0]:
+            best = (end - start + 1, start, end)
+    count, start, end = best
+    return (statistics.median(values[start:end + 1]) if count else 0.0), count
+
+
+def _column_offsets(headers: dict[int, tuple], by_page: dict[int, list[Cell]]) -> dict[str, float]:
+    """How far right of each header label its column of amounts ends, over all pages."""
+    offsets = {}
+    for key in ("debit", "credit", "balance"):
+        diffs = []
+        for page_no, (labels, _, bottom, _) in headers.items():
+            label = labels[key]
+            diffs += [c.bbox[2] - label.bbox[2] for c in by_page[page_no]
+                      if c.bbox[1] >= bottom and parse_amount(c.text) is not None
+                      and _under(label, c)]
+        offset, count = _densest_median(diffs)
+        offsets[key] = offset if count >= 2 else 0.0
+    return offsets
+
+
+def _columns(labels: dict[str, Cell], offsets: dict[str, float]) -> dict[str, float]:
+    cols = {k: label.bbox[2] + offsets[k] for k, label in labels.items()}
+    edges = sorted(cols.values())
+    if any(b - a < 3 for a, b in pairwise(edges)):  # two labels over one column
+        return {k: label.bbox[2] for k, label in labels.items()}
+    return cols
 
 
 def _assign(cols: dict[str, float], cell: Cell) -> str | None:
@@ -162,12 +210,15 @@ def parse_cells(cells: list[Cell], pages: int) -> ParsedStatement:
         by_page[c.page].append(c)
     used: set[int] = set()  # ids of cells that belong to the header or table rows
     index = 0
+    headers = {p: h for p in range(pages) if (h := _find_header(by_page[p])) is not None}
+    offsets = _column_offsets(headers, by_page)
     cols: dict[str, float] | None = None
     for page_no in range(pages):
         page_cells = by_page[page_no]
-        header = _find_header(page_cells)
+        header = headers.get(page_no)
         if header is not None:
-            cols, band_top, band_bottom, band = header
+            labels, band_top, band_bottom, band = header
+            cols = _columns(labels, offsets)
             parsed.header_labels[page_no] = [c.text for c in sorted(band, key=lambda c: (
                 c.bbox[0], c.bbox[1]))]
             parsed.header_top.setdefault(page_no, band_top)
