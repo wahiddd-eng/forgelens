@@ -1,0 +1,100 @@
+{% import "_macros.j2" as m %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ bank.name }} e-Statement</title>
+<meta name="author" content="{{ bank.name }}">
+<meta name="generator" content="{{ bank.short_name }} Digital Banking">
+<meta name="dcterms.created" content="{{ statement.generated_on.isoformat() }}T06:15:00+05:30">
+<meta name="dcterms.modified" content="{{ statement.generated_on.isoformat() }}T06:15:00+05:30">
+<style>
+  @page {
+    size: A4 {{ bank.orientation }};
+    margin: 0 0 16mm 0;
+    @bottom-left {
+      content: "{{ bank.name }} · e-Statement";
+      font-family: {{ bank.font_family|safe }}; font-size: 7pt; color: #888; margin-left: 12mm;
+    }
+    @bottom-right {
+      content: counter(page) " of " counter(pages);
+      font-family: {{ bank.font_family|safe }}; font-size: 7pt; color: #888; margin-right: 12mm;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: {{ bank.font_family|safe }}; font-size: {{ bank.base_font_size }}pt; color: #222; margin: 0; }
+  .band { background: {{ bank.primary_colour }}; color: #fff; padding: 12mm 12mm 7mm; display: flex;
+          justify-content: space-between; align-items: flex-end; }
+  .band .name { font-size: 17pt; font-weight: bold; }
+  .band .tag { font-size: 8pt; color: {{ bank.accent_colour }}; margin-top: 2pt; }
+  .band .doc { text-align: right; font-size: 8pt; }
+  .band .doc .t { font-size: 11pt; font-weight: bold; }
+  .content { padding: 6mm 12mm 0; }
+  .holder { display: flex; justify-content: space-between; gap: 14pt; }
+  .holder .who .n { font-size: 11pt; font-weight: bold; }
+  .holder .who div { margin-bottom: 1.5pt; }
+  .holder table { border-collapse: collapse; }
+  .holder td { padding: 1.2pt 0 1.2pt 10pt; }
+  .holder td.k { color: #777; padding-left: 0; }
+  .cards { display: flex; gap: 8pt; margin: 9pt 0 6pt; }
+  .card { flex: 1; border-radius: 5pt; background: #f4f6f8; padding: 6pt 8pt; text-align: right; }
+  .card.main { background: {{ bank.accent_colour }}33; }
+  .card-label { font-size: 7.2pt; color: #666; }
+  .card-value { font-size: 10.5pt; font-weight: bold; margin-top: 2pt; }
+  .txns { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 6pt;
+          font-size: {{ bank.base_font_size - 0.6 }}pt; }
+  .txns thead { display: table-header-group; }
+  .txns th { color: {{ bank.primary_colour }}; border-bottom: 1.4pt solid {{ bank.primary_colour }};
+             padding: 4pt 4pt; text-align: left; font-size: {{ bank.base_font_size - 1 }}pt;
+             text-transform: uppercase; letter-spacing: 0.3pt; vertical-align: bottom; }
+  .txns th.num { text-align: right; }
+  .txns td { padding: 3.5pt 4pt; border-bottom: 0.4pt solid #e3e6ea; vertical-align: top; word-wrap: break-word; }
+  {% if bank.zebra %}.txns tr:nth-child(even) td { background: #fafbfc; }{% endif %}
+  .txns tr { page-break-inside: avoid; }
+  .num { text-align: right; white-space: nowrap; }
+  .nowrap { white-space: nowrap; }
+  .ref { word-break: break-all; color: #555; }
+  .sno { color: #888; }
+  .ob td { font-weight: bold; color: {{ bank.primary_colour }}; }
+  .summary, .summary-kv, .cards { page-break-inside: avoid; break-inside: avoid; }
+  .note { margin-top: 9pt; font-size: 7.2pt; color: #777; }
+</style>
+</head>
+<body>
+  <div class="band">
+    <div>
+      <div class="name">{{ bank.name }}</div>
+      <div class="tag">{{ bank.tagline }}</div>
+    </div>
+    <div class="doc">
+      <div class="t">Account Statement</div>
+      <div>{{ fmt_date(statement.period_start) }} – {{ fmt_date(statement.period_end) }}</div>
+      <div>Issued {{ fmt_date(statement.generated_on) }}</div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="holder">
+      <div class="who">
+        <div class="n">{{ c.name }}</div>
+        {% for line in c.address_lines %}<div>{{ line }}</div>{% endfor %}
+        <div>{{ c.email_masked }}</div>
+      </div>
+      <table>
+        <tr><td class="k">Account number</td><td>{{ c.account_number }}</td></tr>
+        <tr><td class="k">Account type</td><td>{{ c.account_type }}</td></tr>
+        <tr><td class="k">Customer ID</td><td>{{ c.customer_id }}</td></tr>
+        <tr><td class="k">Branch</td><td>{{ c.branch_name }}</td></tr>
+        <tr><td class="k">IFSC</td><td>{{ c.ifsc }}</td></tr>
+      </table>
+    </div>
+
+    {% if bank.summary_position == "top" %}{{ m.summary_cards(statement, amt, bal) }}{% endif %}
+
+    {{ m.txn_table(statement, bank, cols, amt, bal, fmt_date, widths) }}
+
+    {% if bank.summary_position == "bottom" %}{{ m.summary_cards(statement, amt, bal) }}{% endif %}
+
+    <div class="note">Computer-generated statement; no signature required. {{ m.fictional_note(bank) }}</div>
+  </div>
+</body>
+</html>

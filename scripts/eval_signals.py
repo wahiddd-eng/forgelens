@@ -47,6 +47,13 @@ def _metrics(rows: list[dict], signal: str) -> dict:
     }
 
 
+def _group(rows: list[dict], key: str) -> dict[str, list[dict]]:
+    out: dict[str, list[dict]] = defaultdict(list)
+    for r in rows:
+        out[r[key]].append(r)
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--genuine", type=Path, required=True)
@@ -57,7 +64,7 @@ def main() -> None:
 
     rows, edits_total, edits_found = [], 0, 0
     for folder in (args.genuine, args.forged):
-        for json_path in sorted(folder.glob("*.json")):
+        for json_path in sorted(folder.rglob("*.json")):
             record = json.loads(json_path.read_text())
             pdf = json_path.with_suffix(".pdf")
             if not pdf.exists() or record.get("label") not in ("genuine", "forged"):
@@ -68,6 +75,7 @@ def main() -> None:
             row = {
                 "file": pdf.name,
                 "label": record["label"],
+                "bank_id": record.get("bank_id", ""),
                 "variant": forgery.get("variant", "genuine"),
                 "save_mode": forgery.get("save_mode", ""),
                 "font_strategy": forgery.get("font_strategy", ""),
@@ -106,6 +114,14 @@ def main() -> None:
             "financial": round(sum(r["financial_abstained"] for r in rows) / len(rows), 4),
             "structure": round(sum(r["structure_abstained"] for r in rows) / len(rows), 4),
         },
+        "by_bank": {
+            bank: {
+                "n": len(rs),
+                **{f"{s}_recall": _metrics(rs, s)["recall"] for s in SIGNALS},
+                **{f"{s}_fpr": _metrics(rs, s)["false_positive_rate"] for s in SIGNALS},
+            }
+            for bank, rs in sorted(_group(rows, "bank_id").items())
+        },
         "structure_edit_localisation_recall": (round(edits_found / edits_total, 4)
                                                if edits_total else None),
         "edits_total": edits_total,
@@ -140,6 +156,13 @@ def main() -> None:
               "| --- | --- | --- | --- | --- |"]
     for v, d in summary["flag_rate_by_variant"].items():
         lines.append(f"| {v} | {d['n']} | " + " | ".join(f"{d[s]:.1%}" for s in SIGNALS) + " |")
+    if len(summary["by_bank"]) > 1:
+        lines += ["", "| Bank | n | Financial recall | Structure recall | Either recall | Either FPR |",
+                  "| --- | --- | --- | --- | --- | --- |"]
+        for bank, d in summary["by_bank"].items():
+            lines.append(f"| {bank} | {d['n']} | {pct(d['financial_recall'])} | "
+                         f"{pct(d['structure_recall'])} | {pct(d['either_recall'])} | "
+                         f"{pct(d['either_fpr'])} |")
     if summary["structure_edit_localisation_recall"] is not None:
         recall = summary["structure_edit_localisation_recall"]
         note = f"PDF-structure edit localisation recall: {recall:.1%} of {edits_total} edited values"

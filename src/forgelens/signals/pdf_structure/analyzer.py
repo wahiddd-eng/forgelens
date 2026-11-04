@@ -34,6 +34,8 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from ..financial.extract import full_font_names
+
 WEIGHTS = {
     "incremental_update": 0.5,
     "modified_after_creation": 0.3,
@@ -149,11 +151,12 @@ def analyze_pdf(pdf_path: str | Path) -> StructureReport:
         streams = [len(doc[p].get_contents()) for p in range(pages)]
         spans = []
         for p in range(pages):
+            full = full_font_names(doc, p)
             for block in doc[p].get_text("dict")["blocks"]:
                 for line in block.get("lines", []):
                     for s in line["spans"]:
                         if s["text"].strip():
-                            spans.append((p, s["font"], [round(v, 2) for v in s["bbox"]],
+                            spans.append((p, full[s["font"]], [round(v, 2) for v in s["bbox"]],
                                           s["text"].strip()))
 
     report.text_layer = bool(spans)

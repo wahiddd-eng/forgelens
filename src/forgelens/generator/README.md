@@ -41,10 +41,29 @@ record = statement.ground_truth()  # dict saved as JSON next to the PDF
 | `render.py` | HTML (Jinja2) and PDF (WeasyPrint) rendering |
 | `templates/` | One HTML layout per bank style |
 
+## Bank layouts
+
+All ten banks are fictional; every statement carries a footer note saying so.
+
+| Bank | Template | Columns | Date | Numbers | Font | Page | Summary |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Himalaya National Bank | classic table | date, narration, ref, value date, Dr, Cr, balance | 03-09-2025 | 1,23,456.78 | DejaVu Sans | portrait | top |
+| Deccan Co-operative Bank | ledger grid | date, particulars, cheque, Dr, Cr, balance | 03/09/2025 | 1,23,456.78 Cr | Liberation Serif | portrait | bottom |
+| Sahyadri Bank | modern band | date, value date, description, ref, Dr, Cr, balance | 03-Sep-2025 | 1,23,456.78 | Carlito | portrait | top |
+| Konark Urban Bank | classic table | date, details, ref, value date, Dr, Cr, balance | 03/09/25 | 1,23,456.78 | Liberation Sans | landscape | top |
+| Narmada Gramin Bank | ledger grid | S.No., date, description, Dr, Cr, balance | 03.09.2025 | 123456.78 | DejaVu Sans Condensed | portrait | bottom |
+| Bayview International Bank | modern band | date, description, ref, Dr, Cr, balance | 03 Sep 2025 | 123,456.78 | Liberation Sans | portrait | top |
+| Vindhya State Bank | classic table | S.No., date, description, ref, Dr, Cr, balance | 03-09-2025 | 1,23,456.78 Cr | DejaVu Sans | portrait | top |
+| Ganga Mercantile Bank | ledger grid | date, value date, particulars, cheque, Dr, Cr, balance | 03-09-2025 | 1,23,456.78 | DejaVu Serif | portrait | bottom |
+| Tapti Valley Bank | modern band | date, narration, ref, value date, Dr, Cr, balance | 03/09/2025 | 1,23,456.78 | DejaVu Sans | landscape | top |
+| Malabar Coastal Bank | classic table | date, remarks, Dr, Cr, balance | 03-Sep-25 | 1,23,456.78 CR | Liberation Serif | portrait | bottom |
+
+Fonts use stacks that resolve on Linux (DejaVu, Liberation, Carlito) and fall back to Arial / Times / Calibri on macOS and Windows, so PDFs made on different machines differ slightly.
+
+Generate every bank at once with `--bank all`.
+
 ## Adding a bank layout
 
-1. Add a new HTML template in `templates/` (copy `classic_table.html.j2` and change the layout).
-2. Add a `BankProfile` in `banks.py` with an invented name and IFSC prefix, and register it in `BANKS`.
-3. Run `pytest` — the balance and rendering tests run for every seed.
-
-Target for Phase 2: 8–10 layouts that differ in column order, date format, fonts, page structure and narration style.
+1. Add a `BankProfile` to `BANK_LIST` in `banks.py` with an invented name and IFSC prefix. Choose a template, column order, labels, date format, grouping, suffix, font, orientation and summary position.
+2. For a new look, add a template in `templates/` built from the macros in `_macros.j2` (numeric cells must stay right-aligned).
+3. Run `pytest` — `tests/test_banks.py` checks every bank: rendering, exact read-back, both signals on genuine statements, and every forgery type.

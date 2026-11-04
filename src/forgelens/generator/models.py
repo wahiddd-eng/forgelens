@@ -55,6 +55,7 @@ class Statement:
     customer: Customer
     opening_balance: Decimal
     transactions: list[Transaction] = field(default_factory=list)
+    number_format: dict = field(default_factory=dict)  # grouping, balance_suffix, date_format
 
     @property
     def closing_balance(self) -> Decimal:
@@ -87,7 +88,8 @@ class Statement:
             "statement_id": self.statement_id,
             "label": "genuine",
             "bank_id": self.bank_id,
-            "layout": self.layout,
+            "template": self.layout,
+            "format": dict(self.number_format),
             "seed": self.seed,
             "period_start": self.period_start.isoformat(),
             "period_end": self.period_end.isoformat(),

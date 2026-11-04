@@ -34,60 +34,100 @@ from pathlib import Path
 
 from faker import Faker
 
-from ..generator.money import format_inr, to_money
+from ..generator.money import format_amount, to_money
+from ..signals.pdf_structure.analyzer import _font_key
 
 OPERATIONS = ("credit_amount", "closing_balance", "holder_name")
 SAVE_MODES = ("incremental", "rewrite")
 FONT_STRATEGIES = ("matched", "fallback")
 
 _FONT_DIRS = (
-    "/usr/share/fonts/truetype/dejavu",
-    "/usr/share/fonts/dejavu",
+    "/usr/share/fonts",
+    "/usr/local/share/fonts",
+    os.path.expanduser("~/.fonts"),
+    os.path.expanduser("~/.local/share/fonts"),
     "/Library/Fonts",
+    "/System/Library/Fonts",
+    "/System/Library/Fonts/Supplemental",
     os.path.expanduser("~/Library/Fonts"),
+    "C:/Windows/Fonts",
 )
+_font_index_cache: dict[tuple[str, str], str] | None = None
 
 
-def _find_font(file_name: str) -> str | None:
-    for d in _FONT_DIRS:
-        path = os.path.join(d, file_name)
-        if os.path.isfile(path):
-            return path
-    return None
+def _key(name: str) -> tuple[str, str]:
+    family, style = _font_key(name)
+    return family.replace("semicondensed", "condensed"), style
+
+
+def _font_index() -> dict[tuple[str, str], str]:
+    """Map (family, style) to a font file on this machine, keyed from file names."""
+    global _font_index_cache
+    if _font_index_cache is None:
+        index: dict[tuple[str, str], str] = {}
+        for root in _FONT_DIRS:
+            if not os.path.isdir(root):
+                continue
+            for dirpath, _, files in os.walk(root):
+                for f in files:
+                    if f.lower().endswith((".ttf", ".otf")):
+                        index.setdefault(_key(os.path.splitext(f)[0]), os.path.join(dirpath, f))
+        _font_index_cache = index
+    return _font_index_cache
 
 
 class _FontKit:
-    """Chooses the font a forger types with, and measures text in it."""
+    """Chooses the font a forger types with for each span, and measures text in it.
+
+    ``matched`` looks for the same family and style on this machine (as a careful forger
+    would); if it is not installed, or with ``fallback``, Helvetica is used instead.
+    """
 
     def __init__(self, strategy: str):
         import pymupdf
 
         self._pymupdf = pymupdf
         self.requested = strategy
-        regular = _find_font("DejaVuSans.ttf") if strategy == "matched" else None
-        bold = _find_font("DejaVuSans-Bold.ttf") if strategy == "matched" else None
-        self.used = "matched" if regular and bold else "fallback"
-        self._files = {"regular": regular, "bold": bold} if self.used == "matched" else {}
-        self._fonts = {k: pymupdf.Font(fontfile=v) for k, v in self._files.items()}
+        self._resolved: dict[str, tuple[str, object | None, str | None]] = {}
         self._inserted: set[tuple[int, str]] = set()
+        self.outcomes: set[str] = set()
 
-    def name(self, bold: bool) -> str:
-        if self.used == "matched":
-            return "FLbold" if bold else "FLreg"
-        return "hebo" if bold else "helv"
+    def _resolve(self, span_font: str):
+        if span_font not in self._resolved:
+            family, style = _key(span_font)
+            path = _font_index().get((family, style)) if self.requested == "matched" else None
+            if path:
+                name = f"FL{len(self._resolved)}"
+                self._resolved[span_font] = (name, self._pymupdf.Font(fontfile=path), path)
+            else:
+                bold, italic = "bold" in style, "italic" in style or "oblique" in style
+                name = {(False, False): "helv", (True, False): "hebo",
+                        (False, True): "heit", (True, True): "hebi"}[(bold, italic)]
+                self._resolved[span_font] = (name, None, None)
+        name, font, path = self._resolved[span_font]
+        self.outcomes.add("matched" if path else "fallback")
+        return name, font, path
 
-    def width(self, text: str, size: float, bold: bool) -> float:
-        if self.used == "matched":
-            return self._fonts["bold" if bold else "regular"].text_length(text, fontsize=size)
-        return self._pymupdf.get_text_length(text, fontname=self.name(bold), fontsize=size)
+    @property
+    def used(self) -> str:
+        if not self.outcomes:
+            return self.requested
+        return next(iter(self.outcomes)) if len(self.outcomes) == 1 else "mixed"
 
-    def ensure(self, page, bold: bool) -> None:
-        if self.used != "matched":
-            return
-        key = (page.number, "bold" if bold else "regular")
-        if key not in self._inserted:
-            page.insert_font(fontname=self.name(bold), fontfile=self._files[key[1]])
-            self._inserted.add(key)
+    def name(self, span_font: str) -> str:
+        return self._resolve(span_font)[0]
+
+    def width(self, text: str, size: float, span_font: str) -> float:
+        name, font, _ = self._resolve(span_font)
+        if font is not None:
+            return font.text_length(text, fontsize=size)
+        return self._pymupdf.get_text_length(text, fontname=name, fontsize=size)
+
+    def ensure(self, page, span_font: str) -> None:
+        name, _, path = self._resolve(span_font)
+        if path and (page.number, name) not in self._inserted:
+            page.insert_font(fontname=name, fontfile=path)
+            self._inserted.add((page.number, name))
 
 
 def _rgb(color: int) -> tuple[float, float, float]:
@@ -126,8 +166,18 @@ def _plan(record: dict, operation: str, consistent: bool, rng: random.Random, se
     claimed = copy.deepcopy(record)
     txns = claimed["transactions"]
     edits: list[dict] = []
+    fmt = record.get("format", {})
+    grouping, suffix = fmt.get("grouping", "indian"), fmt.get("balance_suffix", "")
 
-    def edit(field: str, span: dict, new_text: str, align: str, row: int | None = None):
+    def amt(value: Decimal) -> str:  # amounts and totals, in the bank's own format
+        return format_amount(value, grouping)
+
+    def bal(value: Decimal) -> str:  # balances carry the bank's suffix, e.g. " Cr"
+        return format_amount(value, grouping, suffix)
+
+    def edit(field: str, span: dict | None, new_text: str, align: str, row: int | None = None):
+        if span is None:
+            return  # this layout does not print the field
         edits.append({"field": field, "row": row, "span": span, "old": span["text"],
                       "new": new_text, "align": align})
 
@@ -142,18 +192,18 @@ def _plan(record: dict, operation: str, consistent: bool, rng: random.Random, se
         new = _plausible_increase(rng, old, 1.4, 3.0)
         delta = new - old
         target["credit"] = str(new)
-        edit("credit", rows[r]["amount"], format_inr(new), "right", r)
+        edit("credit", rows[r]["amount"], amt(new), "right", r)
         claimed["total_credits"] = str(to_money(Decimal(claimed["total_credits"]) + delta))
         if consistent:
             for t in txns[r:]:
                 t["balance"] = str(to_money(Decimal(t["balance"]) + delta))
-                edit("balance", rows[t["row"]]["balance"], format_inr(Decimal(t["balance"])),
+                edit("balance", rows[t["row"]]["balance"], bal(Decimal(t["balance"])),
                      "right", t["row"])
             claimed["closing_balance"] = txns[-1]["balance"]
-            edit("summary_total_credits", fields["summary_total_credits"],
-                 format_inr(Decimal(claimed["total_credits"])), "right")
-            edit("summary_closing", fields["summary_closing"],
-                 format_inr(Decimal(claimed["closing_balance"])), "right")
+            edit("summary_total_credits", fields.get("summary_total_credits"),
+                 amt(Decimal(claimed["total_credits"])), "right")
+            edit("summary_closing", fields.get("summary_closing"),
+                 bal(Decimal(claimed["closing_balance"])), "right")
         return claimed, edits
 
     if consistent:
@@ -165,8 +215,8 @@ def _plan(record: dict, operation: str, consistent: bool, rng: random.Random, se
         new = to_money(new + (old - old.to_integral_value()))  # keep the paise, as forgers do
         claimed["closing_balance"] = str(new)
         txns[-1]["balance"] = str(new)
-        edit("summary_closing", fields["summary_closing"], format_inr(new), "right")
-        edit("balance", rows[-1]["balance"], format_inr(new), "right", len(rows) - 1)
+        edit("summary_closing", fields.get("summary_closing"), bal(new), "right")
+        edit("balance", rows[-1]["balance"], bal(new), "right", len(rows) - 1)
         return claimed, edits
 
     if operation == "holder_name":
@@ -232,11 +282,10 @@ def forge(
                               graphics=pymupdf.PDF_REDACT_LINE_ART_NONE)
         for e in page_edits:
             span = e["span"]
-            bold = "Bold" in span["font"]
-            fonts.ensure(page, bold)
-            width = fonts.width(e["new"], span["size"], bold)
+            fonts.ensure(page, span["font"])
+            width = fonts.width(e["new"], span["size"], span["font"])
             x0 = span["bbox"][2] - width if e["align"] == "right" else span["bbox"][0]
-            page.insert_text((x0, span["origin"][1]), e["new"], fontname=fonts.name(bold),
+            page.insert_text((x0, span["origin"][1]), e["new"], fontname=fonts.name(span["font"]),
                              fontsize=span["size"], color=_rgb(span["color"]))
             new_bbox = [x0, span["bbox"][1], x0 + width, span["bbox"][3]]
             e["new_bbox"] = [round(v, 3) for v in new_bbox]

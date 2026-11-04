@@ -16,7 +16,8 @@ from forgelens.generator import BANKS, build_statement, get_bank, locate_fields,
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--bank", default="himalaya_national", choices=sorted(BANKS))
+    parser.add_argument("--bank", default="himalaya_national", choices=sorted(BANKS) + ["all"],
+                        help="bank id, or 'all' to generate --count statements for every bank")
     parser.add_argument("--count", type=int, default=10, help="number of statements")
     parser.add_argument("--seed", type=int, default=0, help="seed of the first statement")
     parser.add_argument("--months", type=int, default=3, help="statement period in months (1-12)")
@@ -24,10 +25,14 @@ def main() -> None:
     parser.add_argument("--no-pdf", action="store_true", help="write ground-truth JSON only")
     args = parser.parse_args()
 
-    bank = get_bank(args.bank)
+    banks = list(BANKS.values()) if args.bank == "all" else [get_bank(args.bank)]
+    for bank in banks:
+        generate(bank, args)
+
+
+def generate(bank, args) -> None:
     out_dir = args.out / bank.bank_id
     out_dir.mkdir(parents=True, exist_ok=True)
-
     for seed in range(args.seed, args.seed + args.count):
         statement = build_statement(seed=seed, bank=bank, months=args.months)
         record = statement.ground_truth()

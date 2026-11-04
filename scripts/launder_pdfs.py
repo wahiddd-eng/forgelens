@@ -29,7 +29,7 @@ def main() -> None:
 
     rng = random.Random(args.seed)
     made = 0
-    for json_path in sorted(args.input.glob("*.json")):
+    for json_path in sorted(args.input.rglob("*.json")):
         record = json.loads(json_path.read_text())
         pdf = json_path.with_suffix(".pdf")
         if not pdf.exists() or record.get("label") not in ("genuine", "forged"):

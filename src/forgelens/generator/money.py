@@ -31,3 +31,24 @@ def format_inr(amount: Decimal) -> str:
             groups.insert(0, head)
         whole = ",".join(groups + [tail])
     return f"{sign}{whole}.{frac}"
+
+
+GROUPINGS = ("indian", "western", "none")
+
+
+def format_amount(amount: Decimal, grouping: str = "indian", suffix: str = "") -> str:
+    """Format an amount the way a bank prints it.
+
+    ``grouping``: ``indian`` (12,34,567.50), ``western`` (1,234,567.50) or ``none``
+    (1234567.50). ``suffix`` is appended as printed, e.g. ``" Cr"``.
+    """
+    amount = to_money(amount)
+    if grouping == "indian":
+        text = format_inr(amount)
+    elif grouping == "western":
+        text = f"{amount:,.2f}"
+    elif grouping == "none":
+        text = f"{amount:.2f}"
+    else:
+        raise ValueError(f"Unknown grouping '{grouping}'. Choose from {', '.join(GROUPINGS)}")
+    return text + suffix

@@ -21,7 +21,7 @@ from forgelens.signals.financial import check_statement
 
 
 def _items(folder: Path):
-    for json_path in sorted(folder.glob("*.json")):
+    for json_path in sorted(folder.rglob("*.json")):
         record = json.loads(json_path.read_text())
         pdf = json_path.with_suffix(".pdf")
         if pdf.exists() and record.get("label") in ("genuine", "forged"):

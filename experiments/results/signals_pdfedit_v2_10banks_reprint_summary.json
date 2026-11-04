@@ -1,0 +1,172 @@
+{
+  "tag": "pdfedit_v2_10banks_reprint",
+  "counts": {
+    "genuine": 300,
+    "forged": 600
+  },
+  "overall": {
+    "financial": {
+      "tp": 314,
+      "fp": 0,
+      "fn": 286,
+      "tn": 300,
+      "accuracy": 0.6822,
+      "precision": 1.0,
+      "recall": 0.5233,
+      "f1": 0.6871,
+      "false_positive_rate": 0.0
+    },
+    "structure": {
+      "tp": 600,
+      "fp": 0,
+      "fn": 0,
+      "tn": 300,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "either": {
+      "tp": 600,
+      "fp": 0,
+      "fn": 0,
+      "tn": 300,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "flag_rate_by_variant": {
+    "closing_balance": {
+      "n": 130,
+      "financial": 1.0,
+      "structure": 1.0,
+      "either": 1.0
+    },
+    "credit_amount": {
+      "n": 184,
+      "financial": 1.0,
+      "structure": 1.0,
+      "either": 1.0
+    },
+    "credit_amount_consistent": {
+      "n": 209,
+      "financial": 0.0,
+      "structure": 1.0,
+      "either": 1.0
+    },
+    "genuine": {
+      "n": 300,
+      "financial": 0.0,
+      "structure": 0.0,
+      "either": 0.0
+    },
+    "holder_name": {
+      "n": 77,
+      "financial": 0.0,
+      "structure": 1.0,
+      "either": 1.0
+    }
+  },
+  "abstention_rate": {
+    "financial": 0.0,
+    "structure": 0.0
+  },
+  "by_bank": {
+    "bayview_international": {
+      "n": 90,
+      "financial_recall": 0.5,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "deccan_cooperative": {
+      "n": 90,
+      "financial_recall": 0.5833,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "ganga_mercantile": {
+      "n": 90,
+      "financial_recall": 0.6333,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "himalaya_national": {
+      "n": 90,
+      "financial_recall": 0.55,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "konark_urban": {
+      "n": 90,
+      "financial_recall": 0.4833,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "malabar_coastal": {
+      "n": 90,
+      "financial_recall": 0.4833,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "narmada_gramin": {
+      "n": 90,
+      "financial_recall": 0.6,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "sahyadri": {
+      "n": 90,
+      "financial_recall": 0.5167,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "tapti_valley": {
+      "n": 90,
+      "financial_recall": 0.4333,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "vindhya_state": {
+      "n": 90,
+      "financial_recall": 0.45,
+      "structure_recall": 1.0,
+      "either_recall": 1.0,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "either_fpr": 0.0
+    }
+  },
+  "structure_edit_localisation_recall": 0.9973,
+  "edits_total": 12798
+}

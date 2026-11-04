@@ -38,7 +38,7 @@ def main() -> None:
     args = parser.parse_args()
 
     rng = random.Random(args.seed)
-    records = sorted(args.genuine.glob("*.json"))
+    records = sorted(args.genuine.rglob("*.json"))
     if not records:
         raise SystemExit(f"No genuine JSON files found in {args.genuine}")
 

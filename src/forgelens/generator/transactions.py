@@ -212,6 +212,30 @@ def _narrate(rng: random.Random, bank: BankProfile, event: _Event, customer: Cus
     raise ValueError(f"Unknown event kind: {event.kind}")
 
 
+def _styled(narration: str, kind: str, is_credit: bool, style: str) -> str:
+    """Rewrite a narration in the bank's house style.
+
+    ``slash`` keeps ``UPI/DR/...``; ``hyphen`` uses hyphens (``UPI-DR-...``) and ``ATW-``
+    for cash withdrawals; ``transfer`` prefixes ``BY TRANSFER-`` / ``TO TRANSFER-`` to
+    electronic transfers, as some public-sector banks do.
+    """
+    if style == "slash":
+        return narration
+    if style == "hyphen":
+        if kind == "atm":
+            return narration.replace("ATM WDL/", "ATW-").replace("/", "-")
+        if kind in ("upi_in", "upi_out", "rent", "imps_out", "bill", "cheque_in"):
+            return narration.replace("/", "-")
+        return narration
+    if style == "transfer":
+        if kind in ("upi_in", "upi_out", "rent", "imps_out", "neft_in", "salary"):
+            return ("BY TRANSFER-" if is_credit else "TO TRANSFER-") + narration
+        if kind == "atm":
+            return "ATM CASH WDL-" + narration.removeprefix("ATM WDL/")
+        return narration
+    raise ValueError(f"Unknown narration style '{style}'")
+
+
 CATEGORY = {
     "salary": "salary", "neft_in": "transfer_in", "upi_in": "upi_in", "cheque_in": "cheque_in",
     "interest": "interest", "upi_out": "upi_out", "rent": "rent", "emi": "emi", "bill": "bill",
@@ -254,6 +278,7 @@ def build_statement(seed: int, bank: BankProfile, months: int = 3,
             if amount <= 0:
                 continue
         narration, reference, is_credit = _narrate(rng, bank, event, customer)
+        narration = _styled(narration, event.kind, is_credit, bank.narration_style)
         if not is_credit and balance - amount < floor:
             continue
         value_date = event.day
@@ -282,4 +307,5 @@ def build_statement(seed: int, bank: BankProfile, months: int = 3,
         customer=customer,
         opening_balance=opening,
         transactions=rows,
+        number_format=bank.number_format,
     )
