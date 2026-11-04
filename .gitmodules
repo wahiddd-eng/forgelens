@@ -1,0 +1,3 @@
+[submodule "third_party/ADCD-Net"]
+	path = third_party/ADCD-Net
+	url = https://github.com/KahimWong/ADCD-Net.git
