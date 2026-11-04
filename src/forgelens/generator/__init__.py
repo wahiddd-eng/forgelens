@@ -10,6 +10,7 @@ Example::
 """
 
 from .banks import BANKS, BankProfile, get_bank
+from .layout import LayoutError, locate_fields
 from .models import Customer, Statement, Transaction
 from .money import format_inr, to_money
 from .render import render_html, render_pdf
@@ -19,11 +20,13 @@ __all__ = [
     "BANKS",
     "BankProfile",
     "Customer",
+    "LayoutError",
     "Statement",
     "Transaction",
     "build_statement",
     "format_inr",
     "get_bank",
+    "locate_fields",
     "render_html",
     "render_pdf",
     "to_money",

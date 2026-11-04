@@ -11,7 +11,7 @@ import argparse
 import json
 from pathlib import Path
 
-from forgelens.generator import BANKS, build_statement, get_bank, render_pdf
+from forgelens.generator import BANKS, build_statement, get_bank, locate_fields, render_pdf
 
 
 def main() -> None:
@@ -34,6 +34,7 @@ def main() -> None:
         if not args.no_pdf:
             pdf_path = render_pdf(statement, bank, out_dir / f"{statement.statement_id}.pdf")
             record["pdf"] = pdf_path.name
+            record["layout"] = locate_fields(pdf_path, statement, bank)
         (out_dir / f"{statement.statement_id}.json").write_text(json.dumps(record, indent=2))
         print(f"{statement.statement_id}: {len(statement.transactions)} transactions, "
               f"closing balance {statement.closing_balance}")
