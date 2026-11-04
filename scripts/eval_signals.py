@@ -1,8 +1,10 @@
 """Evaluate the rule-based signals, alone and combined, on genuine and forged statements.
 
 Signals: financial consistency (``financial``), PDF structure (``structure``) and their
-combination (``either``: forged if either signal fires). Also reports how many edited
-values the structure signal points at (edit localisation recall).
+combination (``either``: forged if either signal fires). A signal that cannot read a file
+(for example an image-only PDF) abstains: the file counts as not flagged, and abstentions
+are reported separately. Also reports how many edited values the structure signal points
+at (edit localisation recall).
 
 Example:
     python scripts/eval_signals.py --genuine data/synthetic/genuine/himalaya_national \
@@ -69,8 +71,10 @@ def main() -> None:
                 "variant": forgery.get("variant", "genuine"),
                 "save_mode": forgery.get("save_mode", ""),
                 "font_strategy": forgery.get("font_strategy", ""),
-                "financial": not fin.consistent,
+                "financial": bool(fin.findings),
                 "structure": struct.suspicious,
+                "financial_abstained": fin.parsed_rows == 0,
+                "structure_abstained": not struct.text_layer,
                 "financial_score": round(fin.score, 4),
                 "structure_score": struct.score,
                 "financial_checks": ";".join(sorted({f.check for f in fin.findings})),
@@ -97,6 +101,10 @@ def main() -> None:
         "flag_rate_by_variant": {
             v: {"n": len(rs), **{s: round(sum(r[s] for r in rs) / len(rs), 4) for s in SIGNALS}}
             for v, rs in sorted(by_variant.items())
+        },
+        "abstention_rate": {
+            "financial": round(sum(r["financial_abstained"] for r in rows) / len(rows), 4),
+            "structure": round(sum(r["structure_abstained"] for r in rows) / len(rows), 4),
         },
         "structure_edit_localisation_recall": (round(edits_found / edits_total, 4)
                                                if edits_total else None),
@@ -126,6 +134,8 @@ def main() -> None:
         label = metric.replace("_", " ").capitalize()
         lines.append(f"| {label} | " + " | ".join(pct(summary["overall"][s][metric])
                                                    for s in SIGNALS) + " |")
+    ab = summary["abstention_rate"]
+    lines.append(f"| Abstained (unreadable) | {ab['financial']:.3f} | {ab['structure']:.3f} | — |")
     lines += ["", "| Variant | n | Financial | PDF structure | Either |",
               "| --- | --- | --- | --- | --- |"]
     for v, d in summary["flag_rate_by_variant"].items():

@@ -71,6 +71,10 @@
       "either": 1.0
     }
   },
+  "abstention_rate": {
+    "financial": 0.0,
+    "structure": 0.0
+  },
   "structure_edit_localisation_recall": 1.0,
   "edits_total": 4014
 }

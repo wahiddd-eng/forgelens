@@ -1,6 +1,7 @@
 """Evaluate the financial-consistency signal on genuine and forged statements.
 
-A statement is predicted "forged" when any consistency check fails. Writes a per-file CSV,
+A statement is predicted "forged" when any consistency check fails. Files whose table
+cannot be read (e.g. image-only PDFs) produce no findings and count as not flagged. Writes a per-file CSV,
 a summary JSON and a Markdown table to the output folder.
 
 Example:
@@ -49,7 +50,7 @@ def main() -> None:
                 "label": record["label"],
                 "variant": forgery.get("variant", "genuine"),
                 "balance_consistent": forgery.get("balance_consistent", True),
-                "predicted": "consistent" if report.consistent else "inconsistent",
+                "predicted": "inconsistent" if report.findings else "consistent",
                 "score": round(report.score, 4),
                 "parsed_rows": report.parsed_rows,
                 "n_findings": len(report.findings),

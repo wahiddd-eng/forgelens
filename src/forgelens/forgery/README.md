@@ -37,4 +37,21 @@ python scripts/forge_pdf_edits.py --genuine data/synthetic/genuine/himalaya_nati
     --out data/synthetic/forged/pdf_edit --per-statement 2 --seed 0 --masks --dpi 150
 ```
 
+## Laundering (`launder.py`)
+
+Re-saves a genuine or forged statement the way people do, to strip file-level traces:
+
+| Method | What it does | Text layer |
+| --- | --- | --- |
+| `reprint` | Ghostscript re-distil, like "Print to PDF": one save section, one content stream per page, all fonts embedded, equal creation and modification dates | Kept |
+| `raster` | Every page rendered to a JPEG and wrapped in a new PDF, like a screenshot or scan | Removed |
+
+Apply it to genuine statements too, so a detector cannot learn "re-saved means forged". Page geometry is unchanged, so masks stay valid (`--masks` rewrites them for the new file names).
+
+```bash
+# macOS: brew install ghostscript
+python scripts/launder_pdfs.py --input data/synthetic/forged/pdf_edit \
+    --out data/synthetic/forged/pdf_edit_reprint --method reprint --masks
+```
+
 Coming next: image-level edits (copy-paste and splicing), AI inpainting and fully generated fakes — these run on the GPU machine.
