@@ -23,6 +23,20 @@ Review dates are not yet announced. Add them here when SRM publishes the review 
 
 ---
 
+## Backlog
+
+Agreed but not yet started. Move an item into a weekly entry when work begins.
+
+| Item | Phase | Owner | Notes |
+| --- | --- | --- | --- |
+| Single-GPU ADCD-Net config (`gpus = '0'`, reduced `val_bs`) | Phase 1 | Dhruv | Keep upstream `cfg.py` untouched; override from our own config |
+| ADCD-Net evaluation script saving CSV results to `experiments/results/` | Phase 1 | Dhruv | Doc Protocol: TestingSet, FCD, SCD + T-SROIE, Tampered-IC13, RTM, OSTF |
+| Page-image wrapper in `src/forgelens/signals/image/` | Phase 1 | Dhruv | Runs ADCD-Net on any single page image; needed in Phase 3 |
+| PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Upstream pins PyTorch 2.3.0+cu121, which does not support RTX 50-series GPUs |
+| Evaluate with the released checkpoint, do not retrain | Phase 1 | Dhruv | Upstream training used 4× RTX 4090 for ~27 hours |
+
+---
+
 ## Dataset access
 
 Passwords are shared privately between team members and are **never** written in this repository.
