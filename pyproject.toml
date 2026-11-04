@@ -17,9 +17,13 @@ authors = [
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"forgelens.generator" = ["templates/*.j2"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+extend-exclude = ["third_party"]
