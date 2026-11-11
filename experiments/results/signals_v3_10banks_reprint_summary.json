@@ -1,0 +1,232 @@
+{
+  "tag": "v3_10banks_reprint",
+  "signals": [
+    "financial",
+    "structure",
+    "template",
+    "either"
+  ],
+  "counts": {
+    "genuine": 300,
+    "forged": 600
+  },
+  "overall": {
+    "financial": {
+      "tp": 165,
+      "fp": 0,
+      "fn": 435,
+      "tn": 300,
+      "accuracy": 0.5167,
+      "precision": 1.0,
+      "recall": 0.275,
+      "f1": 0.4314,
+      "false_positive_rate": 0.0
+    },
+    "structure": {
+      "tp": 330,
+      "fp": 0,
+      "fn": 270,
+      "tn": 300,
+      "accuracy": 0.7,
+      "precision": 1.0,
+      "recall": 0.55,
+      "f1": 0.7097,
+      "false_positive_rate": 0.0
+    },
+    "template": {
+      "tp": 452,
+      "fp": 0,
+      "fn": 148,
+      "tn": 300,
+      "accuracy": 0.8356,
+      "precision": 1.0,
+      "recall": 0.7533,
+      "f1": 0.8593,
+      "false_positive_rate": 0.0
+    },
+    "either": {
+      "tp": 454,
+      "fp": 0,
+      "fn": 146,
+      "tn": 300,
+      "accuracy": 0.8378,
+      "precision": 1.0,
+      "recall": 0.7567,
+      "f1": 0.8615,
+      "false_positive_rate": 0.0
+    }
+  },
+  "flag_rate_by_variant": {
+    "closing_balance": {
+      "n": 73,
+      "financial": 1.0,
+      "structure": 1.0,
+      "template": 1.0,
+      "either": 1.0
+    },
+    "credit_amount": {
+      "n": 92,
+      "financial": 1.0,
+      "structure": 1.0,
+      "template": 1.0,
+      "either": 1.0
+    },
+    "credit_amount_consistent": {
+      "n": 96,
+      "financial": 0.0,
+      "structure": 1.0,
+      "template": 1.0,
+      "either": 1.0
+    },
+    "genuine": {
+      "n": 300,
+      "financial": 0.0,
+      "structure": 0.0,
+      "template": 0.0,
+      "either": 0.0
+    },
+    "holder_name": {
+      "n": 39,
+      "financial": 0.0,
+      "structure": 1.0,
+      "template": 0.9487,
+      "either": 1.0
+    },
+    "rebuilt_exact": {
+      "n": 146,
+      "financial": 0.0,
+      "structure": 0.0,
+      "template": 0.0,
+      "either": 0.0
+    },
+    "rebuilt_imitation": {
+      "n": 154,
+      "financial": 0.0,
+      "structure": 0.1948,
+      "template": 1.0,
+      "either": 1.0
+    }
+  },
+  "abstention_rate": {
+    "financial": 0.0,
+    "structure": 0.0,
+    "template": 0.0
+  },
+  "by_bank": {
+    "bayview_international": {
+      "n": 90,
+      "financial_recall": 0.25,
+      "structure_recall": 0.5333,
+      "template_recall": 0.8,
+      "either_recall": 0.8,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "deccan_cooperative": {
+      "n": 90,
+      "financial_recall": 0.25,
+      "structure_recall": 0.5167,
+      "template_recall": 0.65,
+      "either_recall": 0.65,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "ganga_mercantile": {
+      "n": 90,
+      "financial_recall": 0.2833,
+      "structure_recall": 0.55,
+      "template_recall": 0.8167,
+      "either_recall": 0.8167,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "himalaya_national": {
+      "n": 90,
+      "financial_recall": 0.3,
+      "structure_recall": 0.55,
+      "template_recall": 0.7667,
+      "either_recall": 0.7667,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "konark_urban": {
+      "n": 90,
+      "financial_recall": 0.35,
+      "structure_recall": 0.55,
+      "template_recall": 0.8167,
+      "either_recall": 0.8167,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "malabar_coastal": {
+      "n": 90,
+      "financial_recall": 0.2833,
+      "structure_recall": 0.6,
+      "template_recall": 0.7833,
+      "either_recall": 0.7833,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "narmada_gramin": {
+      "n": 90,
+      "financial_recall": 0.3,
+      "structure_recall": 0.5,
+      "template_recall": 0.7333,
+      "either_recall": 0.7333,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "sahyadri": {
+      "n": 90,
+      "financial_recall": 0.25,
+      "structure_recall": 0.55,
+      "template_recall": 0.7,
+      "either_recall": 0.7333,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "tapti_valley": {
+      "n": 90,
+      "financial_recall": 0.2167,
+      "structure_recall": 0.5667,
+      "template_recall": 0.7167,
+      "either_recall": 0.7167,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "vindhya_state": {
+      "n": 90,
+      "financial_recall": 0.2667,
+      "structure_recall": 0.5833,
+      "template_recall": 0.75,
+      "either_recall": 0.75,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    }
+  },
+  "edit_localisation_recall": {
+    "structure": 0.1916,
+    "template": 0.6031
+  },
+  "edits_total": 36164
+}

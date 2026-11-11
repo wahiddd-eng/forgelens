@@ -13,9 +13,41 @@ authors = [
   {name = "Syed Wahid Sajad"},
   {name = "Dhruv Bhoye"},
 ]
+# Core: generator, forgeries and the rule-based signals. WeasyPrint also needs the Pango
+# system library, and laundering needs Ghostscript (see the README).
+dependencies = [
+  "faker>=20",
+  "jinja2>=3.1",
+  "pymupdf>=1.24.3",
+  "weasyprint>=61",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.16,<0.17"]  # pin the linter: new releases add rules
+# Image forensics, fusion and augmentation (Phases 1, 3 and 4). Install PyTorch separately
+# with the CUDA build that matches the GPU; see PROGRESS.md.
+ml = [
+  "augraphy",
+  "numpy",
+  "opencv-python",
+  "pandas",
+  "pdfplumber",
+  "pikepdf",
+  "pytesseract",
+  "pyyaml",
+  "scikit-learn",
+  "torch",
+  "torchvision",
+  "tqdm",
+  "xgboost",
+]
+app = ["fastapi", "python-multipart", "uvicorn"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"forgelens.generator" = ["templates/*.j2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -23,3 +55,4 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+extend-exclude = ["third_party"]

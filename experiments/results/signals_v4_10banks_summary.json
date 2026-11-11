@@ -1,0 +1,411 @@
+{
+  "tag": "v4_10banks",
+  "run": {
+    "created_at": "2026-11-04T19:00:59+00:00",
+    "git_commit": "71f1bfcd1304cd8db544742696b18e025f94c3a2",
+    "git_dirty": false,
+    "python": "3.13.18",
+    "platform": "Linux-6.18.44-fc-v233-x86_64-with-glibc2.39",
+    "packages": {
+      "forgelens": "0.1.0",
+      "pymupdf": "2.1",
+      "weasyprint": "70.0",
+      "fonttools": "4.67.0",
+      "faker": "40.44.0",
+      "jinja2": "3.1.6"
+    },
+    "ghostscript": "10.02.1",
+    "command": "eval_signals.py --genuine /tmp/claude-0/-home-claude/b9a54fcd-c316-5110-a1bf-ebc9ed598c02/scratchpad/v4/genuine --forged /tmp/claude-0/-home-claude/b9a54fcd-c316-5110-a1bf-ebc9ed598c02/scratchpad/v4/forged --templates experiments/templates_v4.json --out experiments/results --tag v4_10banks",
+    "args": {
+      "genuine": "/tmp/claude-0/-home-claude/b9a54fcd-c316-5110-a1bf-ebc9ed598c02/scratchpad/v4/genuine",
+      "forged": "/tmp/claude-0/-home-claude/b9a54fcd-c316-5110-a1bf-ebc9ed598c02/scratchpad/v4/forged",
+      "templates": "experiments/templates_v4.json",
+      "out": "experiments/results",
+      "tag": "v4_10banks"
+    }
+  },
+  "template_profiles": {
+    "run": {
+      "created_at": "2026-11-04T18:48:22+00:00",
+      "git_commit": "71f1bfcd1304cd8db544742696b18e025f94c3a2",
+      "git_dirty": false,
+      "python": "3.13.18",
+      "platform": "Linux-6.18.44-fc-v233-x86_64-with-glibc2.39",
+      "packages": {
+        "forgelens": "0.1.0",
+        "pymupdf": "2.1",
+        "weasyprint": "70.0",
+        "fonttools": "4.67.0",
+        "faker": "40.44.0",
+        "jinja2": "3.1.6"
+      },
+      "ghostscript": "10.02.1",
+      "command": "fit_templates.py --genuine /tmp/claude-0/-home-claude/b9a54fcd-c316-5110-a1bf-ebc9ed598c02/scratchpad/v4/train --out experiments/templates_v4.json",
+      "args": {
+        "genuine": "/tmp/claude-0/-home-claude/b9a54fcd-c316-5110-a1bf-ebc9ed598c02/scratchpad/v4/train",
+        "out": "experiments/templates_v4.json"
+      }
+    },
+    "statements": 120
+  },
+  "signals": [
+    "financial",
+    "structure",
+    "template",
+    "either"
+  ],
+  "counts": {
+    "genuine": 300,
+    "forged": 600,
+    "errors": 0
+  },
+  "overall": {
+    "financial": {
+      "tp": 142,
+      "fp": 0,
+      "fn": 458,
+      "tn": 300,
+      "accuracy": 0.4911,
+      "precision": 1.0,
+      "recall": 0.2367,
+      "f1": 0.3828,
+      "false_positive_rate": 0.0,
+      "precision_ci95": [
+        0.9737,
+        1.0
+      ],
+      "recall_ci95": [
+        0.2044,
+        0.2723
+      ],
+      "false_positive_rate_ci95": [
+        0.0,
+        0.0126
+      ]
+    },
+    "structure": {
+      "tp": 306,
+      "fp": 0,
+      "fn": 294,
+      "tn": 300,
+      "accuracy": 0.6733,
+      "precision": 1.0,
+      "recall": 0.51,
+      "f1": 0.6755,
+      "false_positive_rate": 0.0,
+      "precision_ci95": [
+        0.9876,
+        1.0
+      ],
+      "recall_ci95": [
+        0.4701,
+        0.5498
+      ],
+      "false_positive_rate_ci95": [
+        0.0,
+        0.0126
+      ]
+    },
+    "template": {
+      "tp": 458,
+      "fp": 0,
+      "fn": 142,
+      "tn": 300,
+      "accuracy": 0.8422,
+      "precision": 1.0,
+      "recall": 0.7633,
+      "f1": 0.8658,
+      "false_positive_rate": 0.0,
+      "precision_ci95": [
+        0.9917,
+        1.0
+      ],
+      "recall_ci95": [
+        0.7277,
+        0.7956
+      ],
+      "false_positive_rate_ci95": [
+        0.0,
+        0.0126
+      ]
+    },
+    "either": {
+      "tp": 458,
+      "fp": 0,
+      "fn": 142,
+      "tn": 300,
+      "accuracy": 0.8422,
+      "precision": 1.0,
+      "recall": 0.7633,
+      "f1": 0.8658,
+      "false_positive_rate": 0.0,
+      "precision_ci95": [
+        0.9917,
+        1.0
+      ],
+      "recall_ci95": [
+        0.7277,
+        0.7956
+      ],
+      "false_positive_rate_ci95": [
+        0.0,
+        0.0126
+      ]
+    }
+  },
+  "flag_rate_by_variant": {
+    "closing_balance": {
+      "n": 64,
+      "financial": 1.0,
+      "structure": 1.0,
+      "template": 1.0,
+      "either": 1.0
+    },
+    "credit_amount": {
+      "n": 78,
+      "financial": 1.0,
+      "structure": 1.0,
+      "template": 1.0,
+      "either": 1.0
+    },
+    "credit_amount_consistent": {
+      "n": 110,
+      "financial": 0.0,
+      "structure": 1.0,
+      "template": 1.0,
+      "either": 1.0
+    },
+    "genuine": {
+      "n": 300,
+      "financial": 0.0,
+      "structure": 0.0,
+      "template": 0.0,
+      "either": 0.0
+    },
+    "holder_name": {
+      "n": 48,
+      "financial": 0.0,
+      "structure": 1.0,
+      "template": 1.0,
+      "either": 1.0
+    },
+    "rebuilt_exact": {
+      "n": 142,
+      "financial": 0.0,
+      "structure": 0.0,
+      "template": 0.0,
+      "either": 0.0
+    },
+    "rebuilt_imitation": {
+      "n": 158,
+      "financial": 0.0,
+      "structure": 0.038,
+      "template": 1.0,
+      "either": 1.0
+    }
+  },
+  "abstention_rate": {
+    "financial": 0.0,
+    "structure": 0.0,
+    "template": 0.0
+  },
+  "by_bank": {
+    "bayview_international": {
+      "n": 90,
+      "financial_recall": 0.2,
+      "structure_recall": 0.5,
+      "template_recall": 0.7667,
+      "either_recall": 0.7667,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "deccan_cooperative": {
+      "n": 90,
+      "financial_recall": 0.3333,
+      "structure_recall": 0.5,
+      "template_recall": 0.6333,
+      "either_recall": 0.6333,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "ganga_mercantile": {
+      "n": 90,
+      "financial_recall": 0.2333,
+      "structure_recall": 0.5,
+      "template_recall": 0.75,
+      "either_recall": 0.75,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "himalaya_national": {
+      "n": 90,
+      "financial_recall": 0.1833,
+      "structure_recall": 0.5,
+      "template_recall": 0.8,
+      "either_recall": 0.8,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "konark_urban": {
+      "n": 90,
+      "financial_recall": 0.2167,
+      "structure_recall": 0.5,
+      "template_recall": 0.7833,
+      "either_recall": 0.7833,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "malabar_coastal": {
+      "n": 90,
+      "financial_recall": 0.1667,
+      "structure_recall": 0.5,
+      "template_recall": 0.8833,
+      "either_recall": 0.8833,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "narmada_gramin": {
+      "n": 90,
+      "financial_recall": 0.25,
+      "structure_recall": 0.5,
+      "template_recall": 0.7333,
+      "either_recall": 0.7333,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "sahyadri": {
+      "n": 90,
+      "financial_recall": 0.25,
+      "structure_recall": 0.5,
+      "template_recall": 0.8,
+      "either_recall": 0.8,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "tapti_valley": {
+      "n": 90,
+      "financial_recall": 0.2833,
+      "structure_recall": 0.6,
+      "template_recall": 0.7,
+      "either_recall": 0.7,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    },
+    "vindhya_state": {
+      "n": 90,
+      "financial_recall": 0.25,
+      "structure_recall": 0.5,
+      "template_recall": 0.7833,
+      "either_recall": 0.7833,
+      "financial_fpr": 0.0,
+      "structure_fpr": 0.0,
+      "template_fpr": 0.0,
+      "either_fpr": 0.0
+    }
+  },
+  "localisation": {
+    "structure": {
+      "edits": 36590,
+      "locations": 7342,
+      "recall": 0.1986,
+      "recall_ci95": [
+        0.1946,
+        0.2027
+      ],
+      "precision": 0.9898,
+      "precision_ci95": [
+        0.9872,
+        0.9918
+      ]
+    },
+    "structure|pdf_edit": {
+      "edits": 7281,
+      "locations": 7267,
+      "recall": 0.9981,
+      "recall_ci95": [
+        0.9968,
+        0.9989
+      ],
+      "precision": 1.0,
+      "precision_ci95": [
+        0.9995,
+        1.0
+      ]
+    },
+    "structure|rebuild": {
+      "edits": 29309,
+      "locations": 75,
+      "recall": 0.0,
+      "recall_ci95": [
+        0.0,
+        0.0001
+      ],
+      "precision": 0.0,
+      "precision_ci95": [
+        0.0,
+        0.0487
+      ]
+    },
+    "template": {
+      "edits": 36590,
+      "locations": 110099,
+      "recall": 0.5246,
+      "recall_ci95": [
+        0.5195,
+        0.5297
+      ],
+      "precision": 0.1743,
+      "precision_ci95": [
+        0.1721,
+        0.1766
+      ]
+    },
+    "template|pdf_edit": {
+      "edits": 7281,
+      "locations": 4186,
+      "recall": 0.5749,
+      "recall_ci95": [
+        0.5635,
+        0.5862
+      ],
+      "precision": 1.0,
+      "precision_ci95": [
+        0.9991,
+        1.0
+      ]
+    },
+    "template|rebuild": {
+      "edits": 29309,
+      "locations": 105913,
+      "recall": 0.5121,
+      "recall_ci95": [
+        0.5064,
+        0.5178
+      ],
+      "precision": 0.1417,
+      "precision_ci95": [
+        0.1396,
+        0.1438
+      ]
+    }
+  },
+  "error_examples": []
+}

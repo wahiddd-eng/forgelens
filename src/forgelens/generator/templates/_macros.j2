@@ -1,0 +1,82 @@
+{# Shared building blocks for statement templates. Numeric cells are always right-aligned. #}
+
+{% macro txn_table(statement, bank, cols, amt, bal, fmt_date, widths, table_class="txns") %}
+<table class="{{ table_class }}">
+  <colgroup>{% for col in cols %}<col style="width: {{ widths[col] }}%">{% endfor %}</colgroup>
+  <thead>
+    <tr>
+      {% for col in cols %}
+      <th class="col-{{ col }}{% if col in ('debit', 'credit', 'balance') %} num{% endif %}">{{ bank.label(col) }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    <tr class="ob">
+      {% for col in cols %}
+      {% if col == 'date' %}<td class="nowrap">{{ fmt_date(statement.period_start) }}</td>
+      {% elif col == 'narration' %}<td>OPENING BALANCE</td>
+      {% elif col == 'balance' %}<td class="num">{{ bal(statement.opening_balance) }}</td>
+      {% else %}<td></td>
+      {% endif %}
+      {% endfor %}
+    </tr>
+    {% for t in statement.transactions %}
+    {% set row_no = loop.index %}
+    <tr>
+      {% for col in cols %}
+      {% if col == 'sno' %}<td class="sno">{{ row_no }}</td>
+      {% elif col == 'date' %}<td class="nowrap">{{ fmt_date(t.txn_date) }}</td>
+      {% elif col == 'value_date' %}<td class="nowrap">{{ fmt_date(t.value_date) }}</td>
+      {% elif col == 'narration' %}<td>{{ t.narration }}</td>
+      {% elif col == 'ref' %}<td class="ref">{{ t.reference }}</td>
+      {% elif col == 'debit' %}<td class="num">{{ amt(t.debit) if t.debit > 0 else "" }}</td>
+      {% elif col == 'credit' %}<td class="num">{{ amt(t.credit) if t.credit > 0 else "" }}</td>
+      {% elif col == 'balance' %}<td class="num">{{ bal(t.balance) }}</td>
+      {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+{% macro summary_row_table(statement, amt, bal, debit_word="Debits", credit_word="Credits") %}
+<table class="summary">
+  <tr>
+    <th>Opening Balance</th><th>Total {{ debit_word }} ({{ statement.debit_count }})</th>
+    <th>Total {{ credit_word }} ({{ statement.credit_count }})</th><th>Closing Balance</th>
+  </tr>
+  <tr>
+    <td>{{ bal(statement.opening_balance) }}</td><td>{{ amt(statement.total_debits) }}</td>
+    <td>{{ amt(statement.total_credits) }}</td><td><strong>{{ bal(statement.closing_balance) }}</strong></td>
+  </tr>
+</table>
+{% endmacro %}
+
+{% macro summary_kv(statement, amt, bal, debit_word="Debits", credit_word="Credits") %}
+<table class="summary-kv">
+  <tr><td class="k">Opening Balance</td><td class="v">{{ bal(statement.opening_balance) }}</td></tr>
+  <tr><td class="k">Total {{ debit_word }} ({{ statement.debit_count }})</td><td class="v">{{ amt(statement.total_debits) }}</td></tr>
+  <tr><td class="k">Total {{ credit_word }} ({{ statement.credit_count }})</td><td class="v">{{ amt(statement.total_credits) }}</td></tr>
+  <tr><td class="k"><strong>Closing Balance</strong></td><td class="v"><strong>{{ bal(statement.closing_balance) }}</strong></td></tr>
+</table>
+{% endmacro %}
+
+{% macro summary_cards(statement, amt, bal) %}
+<div class="cards">
+  <div class="card"><div class="card-label">Opening Balance</div><div class="card-value">{{ bal(statement.opening_balance) }}</div></div>
+  <div class="card"><div class="card-label">Total Withdrawals ({{ statement.debit_count }})</div><div class="card-value">{{ amt(statement.total_debits) }}</div></div>
+  <div class="card"><div class="card-label">Total Deposits ({{ statement.credit_count }})</div><div class="card-value">{{ amt(statement.total_credits) }}</div></div>
+  <div class="card main"><div class="card-label">Closing Balance</div><div class="card-value">{{ bal(statement.closing_balance) }}</div></div>
+</div>
+{% endmacro %}
+
+{% macro logo(bank, size=34) %}
+<svg width="{{ size }}" height="{{ size }}" viewBox="0 0 34 34" aria-hidden="true">
+  <rect width="34" height="34" rx="6" fill="{{ bank.primary_colour }}"/>
+  <path d="M4 26 L13 12 L18 19 L22 14 L30 26 Z" fill="{{ bank.accent_colour }}"/>
+  <path d="M13 12 L15.5 16 L11 16 Z" fill="#ffffff"/>
+</svg>
+{% endmacro %}
+
+{% macro fictional_note(bank) %}{{ bank.name }} is a fictional bank created for the ForgeLens research dataset.{% endmacro %}

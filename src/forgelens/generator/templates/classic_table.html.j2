@@ -1,0 +1,121 @@
+{% import "_macros.j2" as m %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ bank.name }} - Account Statement</title>
+<meta name="author" content="{{ bank.name }}">
+<meta name="generator" content="{{ bank.meta_generator or (bank.short_name ~ ' e-Statement Service') }}">
+<meta name="dcterms.created" content="{{ statement.generated_on.isoformat() }}T09:00:00+05:30">
+<meta name="dcterms.modified" content="{{ statement.generated_on.isoformat() }}T09:00:00+05:30">
+<style>
+  @page {
+    size: A4 {{ bank.orientation }};
+    margin: 16mm 12mm 18mm 12mm;
+    @bottom-left {
+      content: "{{ bank.name }} | Computer-generated statement. No signature required.";
+      font-family: {{ bank.font_family|safe }};
+      font-size: 7pt;
+      color: #666;
+    }
+    @bottom-right {
+      content: "Page " counter(page) " of " counter(pages);
+      font-family: {{ bank.font_family|safe }};
+      font-size: 7pt;
+      color: #666;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: {{ bank.font_family|safe }}; font-size: {{ bank.base_font_size }}pt; color: #1b1b1b; margin: 0; }
+  .masthead { display: flex; justify-content: space-between; align-items: flex-end;
+              border-bottom: 2.2pt solid {{ bank.primary_colour }}; padding-bottom: 6pt; }
+  .brand { display: flex; align-items: center; gap: 8pt; }
+  .brand-name { font-size: 15pt; font-weight: bold; color: {{ bank.primary_colour }}; white-space: nowrap; }
+  .brand-tag { font-size: 7.5pt; color: {{ bank.accent_colour }}; letter-spacing: 0.4pt; }
+  .doc-title { text-align: right; }
+  .doc-title h1 { margin: 0; font-size: 11.5pt; color: {{ bank.primary_colour }}; }
+  .doc-title p { margin: 2pt 0 0; font-size: 7.8pt; color: #444; }
+  .details { display: flex; gap: 10pt; margin-top: 9pt; }
+  .box { flex: 1; border: 0.7pt solid #c9ced6; padding: 6pt 8pt; }
+  .box h2 { margin: 0 0 4pt; font-size: 8pt; text-transform: uppercase; color: {{ bank.primary_colour }};
+            letter-spacing: 0.5pt; }
+  .kv { width: 100%; border-collapse: collapse; }
+  .kv td { padding: 1.2pt 0; vertical-align: top; }
+  .kv td.k { color: #555; width: 38%; }
+  .summary { width: 100%; border-collapse: collapse; margin-top: 9pt; }
+  .summary th, .summary td { border: 0.7pt solid #c9ced6; padding: 4pt 6pt; text-align: right; }
+  .summary th { background: #eef1f5; color: {{ bank.primary_colour }}; font-size: 7.6pt; }
+  .txns { width: 100%; border-collapse: collapse; margin-top: 10pt; table-layout: fixed;
+          font-size: {{ bank.base_font_size - 0.8 }}pt; }
+  .txns thead { display: table-header-group; }
+  .txns th { background: {{ bank.primary_colour }}; color: #fff; font-size: {{ bank.base_font_size - 1.2 }}pt;
+             padding: 4pt 4pt; text-align: left; vertical-align: bottom; }
+  .txns th.num { white-space: normal; text-align: right; }
+  .txns td { padding: 3pt 4pt; border-bottom: 0.5pt solid #dde1e7; vertical-align: top;
+             word-wrap: break-word; }
+  {% if bank.zebra %}.txns tr:nth-child(even) td { background: #f7f8fa; }{% endif %}
+  .txns tr { page-break-inside: avoid; }
+  .num { text-align: right; white-space: nowrap; }
+  .nowrap { white-space: nowrap; }
+  .ref { word-break: break-all; }
+  .sno { color: #555; }
+  .ob td { font-weight: bold; background: #eef1f5 !important; }
+  .summary, .summary-kv, .cards { page-break-inside: avoid; break-inside: avoid; }
+  .end { margin-top: 10pt; font-size: 7.4pt; color: #555; }
+  .end p { margin: 2pt 0; }
+</style>
+</head>
+<body>
+  <div class="masthead">
+    <div class="brand">
+      {{ m.logo(bank) }}
+      <div>
+        <div class="brand-name">{{ bank.name }}</div>
+        <div class="brand-tag">{{ bank.tagline }}</div>
+      </div>
+    </div>
+    <div class="doc-title">
+      <h1>Statement of Account</h1>
+      <p>Period: {{ fmt_date(statement.period_start) }} to {{ fmt_date(statement.period_end) }}</p>
+      <p>Generated on: {{ fmt_date(statement.generated_on) }}</p>
+    </div>
+  </div>
+
+  <div class="details">
+    <div class="box">
+      <h2>Account holder</h2>
+      <table class="kv">
+        <tr><td class="k">Name</td><td><strong>{{ c.name }}</strong></td></tr>
+        <tr><td class="k">Address</td><td>{% for line in c.address_lines %}{{ line }}{% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
+        <tr><td class="k">Mobile</td><td>{{ c.phone_masked }}</td></tr>
+        <tr><td class="k">Email</td><td>{{ c.email_masked }}</td></tr>
+        <tr><td class="k">Customer ID</td><td>{{ c.customer_id }}</td></tr>
+      </table>
+    </div>
+    <div class="box">
+      <h2>Account details</h2>
+      <table class="kv">
+        <tr><td class="k">Account No.</td><td><strong>{{ c.account_number }}</strong></td></tr>
+        <tr><td class="k">Account Type</td><td>{{ c.account_type }}</td></tr>
+        <tr><td class="k">Branch</td><td>{{ c.branch_name }}</td></tr>
+        <tr><td class="k">IFSC</td><td>{{ c.ifsc }}</td></tr>
+        <tr><td class="k">MICR</td><td>{{ c.micr }}</td></tr>
+        <tr><td class="k">Nominee</td><td>{{ "Registered" if c.nominee_registered else "Not registered" }}</td></tr>
+        <tr><td class="k">Currency</td><td>INR</td></tr>
+      </table>
+    </div>
+  </div>
+
+  {% if bank.summary_position == "top" %}{{ m.summary_row_table(statement, amt, bal) }}{% endif %}
+
+  {{ m.txn_table(statement, bank, cols, amt, bal, fmt_date, widths) }}
+
+  {% if bank.summary_position == "bottom" %}{{ m.summary_row_table(statement, amt, bal) }}{% endif %}
+
+  <div class="end">
+    <p><strong>*** End of Statement ***</strong></p>
+    <p>Please check your statement and report any discrepancy to your branch within 30 days.
+       {{ m.fictional_note(bank) }}</p>
+  </div>
+</body>
+</html>

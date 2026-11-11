@@ -1,0 +1,46 @@
+{
+  "signal": "financial_consistency",
+  "tag": "pdfedit_v1_himalaya",
+  "counts": {
+    "genuine": 100,
+    "forged": 200
+  },
+  "confusion": {
+    "tp": 116,
+    "fp": 0,
+    "fn": 84,
+    "tn": 100
+  },
+  "accuracy": 0.72,
+  "precision": 1.0,
+  "recall": 0.58,
+  "f1": 0.7342,
+  "false_positive_rate": 0.0,
+  "flagged_rate_by_variant": {
+    "closing_balance": {
+      "n": 51,
+      "flagged": 51,
+      "rate": 1.0
+    },
+    "credit_amount": {
+      "n": 65,
+      "flagged": 65,
+      "rate": 1.0
+    },
+    "credit_amount_consistent": {
+      "n": 57,
+      "flagged": 0,
+      "rate": 0.0
+    },
+    "genuine": {
+      "n": 100,
+      "flagged": 0,
+      "rate": 0.0
+    },
+    "holder_name": {
+      "n": 27,
+      "flagged": 0,
+      "rate": 0.0
+    }
+  }
+}

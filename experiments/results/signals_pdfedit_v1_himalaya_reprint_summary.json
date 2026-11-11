@@ -1,0 +1,80 @@
+{
+  "tag": "pdfedit_v1_himalaya_reprint",
+  "counts": {
+    "genuine": 100,
+    "forged": 200
+  },
+  "overall": {
+    "financial": {
+      "tp": 116,
+      "fp": 0,
+      "fn": 84,
+      "tn": 100,
+      "accuracy": 0.72,
+      "precision": 1.0,
+      "recall": 0.58,
+      "f1": 0.7342,
+      "false_positive_rate": 0.0
+    },
+    "structure": {
+      "tp": 200,
+      "fp": 0,
+      "fn": 0,
+      "tn": 100,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "either": {
+      "tp": 200,
+      "fp": 0,
+      "fn": 0,
+      "tn": 100,
+      "accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "flag_rate_by_variant": {
+    "closing_balance": {
+      "n": 51,
+      "financial": 1.0,
+      "structure": 1.0,
+      "either": 1.0
+    },
+    "credit_amount": {
+      "n": 65,
+      "financial": 1.0,
+      "structure": 1.0,
+      "either": 1.0
+    },
+    "credit_amount_consistent": {
+      "n": 57,
+      "financial": 0.0,
+      "structure": 1.0,
+      "either": 1.0
+    },
+    "genuine": {
+      "n": 100,
+      "financial": 0.0,
+      "structure": 0.0,
+      "either": 0.0
+    },
+    "holder_name": {
+      "n": 27,
+      "financial": 0.0,
+      "structure": 1.0,
+      "either": 1.0
+    }
+  },
+  "abstention_rate": {
+    "financial": 0.0,
+    "structure": 0.0
+  },
+  "structure_edit_localisation_recall": 1.0,
+  "edits_total": 4014
+}

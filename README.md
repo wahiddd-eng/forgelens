@@ -24,17 +24,82 @@ K. Wong, J. Zhou, H. Wu, Y.-W. Si and J. Zhou, “ADCD-Net: Robust Document Imag
 
 ## Folder structure
 
-See the README in each top-level directory for its purpose. Source code uses a `src/` layout; generated data, experiment artifacts, application code, scripts, tests, documentation, and third-party integrations are kept separate.
+See the README in each top-level directory for its purpose. Source code uses a `src/` layout:
+
+| Package | What it does |
+| --- | --- |
+| `forgelens.generator` | Fictional banks and synthetic genuine statements (PDF + ground truth) |
+| `forgelens.forgery` | Labelled forgeries: PDF edits, template rebuilds, laundering (reprint, raster) |
+| `forgelens.reader` | Reads what a PDF prints (cells, fonts, table, summary); shared by everything else |
+| `forgelens.signals` | Financial-consistency, PDF-structure and template-matching signals |
+| `forgelens.evaluation` | Metrics with 95% confidence intervals, localisation precision and recall |
+| `forgelens.utils` | Stable seeds and run provenance (code version and environment of each result) |
 
 ## Setup
 
+The core package (generator, forgeries, rule-based signals) needs Python 3.10+, the Pango
+library for WeasyPrint, Ghostscript for laundering, and the free fonts the fictional banks
+use. With other fonts installed the statements still render, but with substitutes, so they
+differ from other machines (the generator warns, and records the fonts it used).
+
+**macOS (Apple silicon or Intel):**
+
 ```bash
-python3.10 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-python -m pip install -e .
+brew install pango ghostscript
+brew install --cask font-liberation font-carlito font-dejavu
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
 git submodule update --init --recursive
 ```
+
+**Ubuntu:**
+
+```bash
+sudo apt install libpango-1.0-0 libpangoft2-1.0-0 ghostscript fonts-liberation \
+    fonts-crosextra-carlito fonts-dejavu-core fonts-dejavu-extra
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+```
+
+The image-forensics and fusion work (Phases 1, 3, 4) also needs `pip install -e ".[ml]"`,
+with PyTorch installed first from pytorch.org in the CUDA build that matches the GPU
+(CUDA 12.8+ for the RTX 5060 Ti). `requirements.txt` installs everything.
+
+## Reproduce the results
+
+Each step writes labels next to its PDFs; every summary records the git commit, library
+versions and arguments that produced it.
+
+```bash
+D=data/synthetic/v4
+python scripts/generate_statements.py --bank all --count 30 --seed 2000 --out $D/genuine
+python scripts/generate_statements.py --bank all --count 12 --seed 9000 --out $D/train
+python scripts/forge_pdf_edits.py --genuine $D/genuine --out $D/forged/pdf_edit --masks
+python scripts/forge_rebuild.py --genuine $D/genuine --out $D/forged/rebuild --masks
+for m in reprint raster; do
+  python scripts/launder_pdfs.py --input $D/genuine --out $D/genuine_$m --method $m
+  python scripts/launder_pdfs.py --input $D/forged --out $D/forged_$m --method $m --masks
+done
+python scripts/fit_templates.py --genuine $D/train --out experiments/templates_v4.json
+python scripts/eval_signals.py --genuine $D/genuine --forged $D/forged \
+    --templates experiments/templates_v4.json --tag v4_10banks
+```
+
+Run the evaluation again on `genuine_reprint`/`forged_reprint` and `genuine_raster`/
+`forged_raster`, then combine with `scripts/compare_results.py`. Fit and evaluate the
+template profiles on the same machine: they depend on the installed fonts.
+`experiments/results/README.md` lists every result set and which ones are superseded.
+
+## Tests
+
+```bash
+ruff check .
+pytest -ra
+```
+
+The suite renders and forges real PDFs, including an end-to-end run of the scripts on a tiny
+dataset (`tests/test_pipeline_smoke.py`), and takes about two minutes. Tests that need
+Ghostscript are skipped when it is not installed.
 
 ## Data and privacy
 

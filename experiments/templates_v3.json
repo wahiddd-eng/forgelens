@@ -1,0 +1,652 @@
+{
+  "bayview_international": {
+    "n": 12,
+    "bank_name": "Bayview International Bank (India)",
+    "page_sizes": [
+      [
+        595,
+        842
+      ]
+    ],
+    "creators": [
+      "BIB Digital Banking"
+    ],
+    "fonts": [
+      "Liberation-Sans",
+      "Liberation-Sans-Bold"
+    ],
+    "header_labels": [
+      "BALANCE",
+      "CREDIT",
+      "DATE",
+      "DEBIT",
+      "REF. NO.",
+      "TRANSACTION DESCRIPTION"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 411.934,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 484.431,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 556.927,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "Liberation-Sans"
+    ],
+    "table_font_sizes": [
+      7.8
+    ],
+    "date_shapes": [
+      "99 AAA 9999"
+    ],
+    "amount_styles": [
+      [
+        "western",
+        ""
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "Liberation-Sans-Bold"
+      ],
+      "sizes": [
+        17.0
+      ],
+      "x0_mean": 34.0,
+      "x0_std": 0.0
+    }
+  },
+  "deccan_cooperative": {
+    "n": 12,
+    "bank_name": "Deccan Co-operative Bank Ltd.",
+    "page_sizes": [
+      [
+        595,
+        842
+      ]
+    ],
+    "creators": [
+      "DCB Core Banking System"
+    ],
+    "fonts": [
+      "Liberation-Serif",
+      "Liberation-Serif-Bold",
+      "Liberation-Serif-Bold-Italic"
+    ],
+    "header_labels": [
+      "Balance",
+      "Cheque No.",
+      "Credit",
+      "Date",
+      "Debit",
+      "Particulars"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 391.172,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 466.469,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 557.615,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "Liberation-Serif"
+    ],
+    "table_font_sizes": [
+      8.2
+    ],
+    "date_shapes": [
+      "99/99/9999"
+    ],
+    "amount_styles": [
+      [
+        "indian",
+        "Cr"
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "Liberation-Serif-Bold"
+      ],
+      "sizes": [
+        16.0
+      ],
+      "x0_mean": 180.9,
+      "x0_std": 0.0
+    }
+  },
+  "ganga_mercantile": {
+    "n": 12,
+    "bank_name": "Ganga Mercantile Bank",
+    "page_sizes": [
+      [
+        595,
+        842
+      ]
+    ],
+    "creators": [
+      "GMB Core Banking System"
+    ],
+    "fonts": [
+      "DejaVu-Serif",
+      "DejaVu-Serif-Bold",
+      "DejaVu-Serif-Bold-Italic"
+    ],
+    "header_labels": [
+      "Balance",
+      "Chq No.",
+      "Deposits (Cr)",
+      "Particulars",
+      "Txn Date",
+      "Value Date",
+      "Withdrawals (Dr)"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 427.811,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 489.467,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 557.56,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "DejaVu-Serif"
+    ],
+    "table_font_sizes": [
+      7.2
+    ],
+    "date_shapes": [
+      "99-99-9999"
+    ],
+    "amount_styles": [
+      [
+        "indian",
+        ""
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "DejaVu-Serif-Bold"
+      ],
+      "sizes": [
+        16.0
+      ],
+      "x0_mean": 185.0,
+      "x0_std": 0.0
+    }
+  },
+  "himalaya_national": {
+    "n": 12,
+    "bank_name": "Himalaya National Bank",
+    "page_sizes": [
+      [
+        595,
+        842
+      ]
+    ],
+    "creators": [
+      "HNB e-Statement Service"
+    ],
+    "fonts": [
+      "DejaVu-Sans",
+      "DejaVu-Sans-Bold"
+    ],
+    "header_labels": [
+      "(Dr)",
+      "Balance",
+      "Chq./Ref. No.",
+      "Deposit (Cr)",
+      "Narration",
+      "Txn Date",
+      "Value Date",
+      "Withdrawal"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 416.374,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 486.809,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 557.265,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "DejaVu-Sans"
+    ],
+    "table_font_sizes": [
+      7.6
+    ],
+    "date_shapes": [
+      "99-99-9999"
+    ],
+    "amount_styles": [
+      [
+        "indian",
+        ""
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "DejaVu-Sans-Bold"
+      ],
+      "sizes": [
+        15.0
+      ],
+      "x0_mean": 67.5,
+      "x0_std": 0.0
+    }
+  },
+  "konark_urban": {
+    "n": 12,
+    "bank_name": "Konark Urban Bank",
+    "page_sizes": [
+      [
+        842,
+        595
+      ]
+    ],
+    "creators": [
+      "KUB e-Statement Service"
+    ],
+    "fonts": [
+      "Liberation-Sans",
+      "Liberation-Sans-Bold"
+    ],
+    "header_labels": [
+      "Balance (INR)",
+      "Chq./Ref. No.",
+      "Cr Amount",
+      "Dr Amount",
+      "Tran Date",
+      "Transaction Details",
+      "Value Date"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 656.069,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 729.972,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 803.871,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "Liberation-Sans"
+    ],
+    "table_font_sizes": [
+      7.8
+    ],
+    "date_shapes": [
+      "99/99/99"
+    ],
+    "amount_styles": [
+      [
+        "indian",
+        ""
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "Liberation-Sans-Bold"
+      ],
+      "sizes": [
+        15.0
+      ],
+      "x0_mean": 67.5,
+      "x0_std": 0.0
+    }
+  },
+  "malabar_coastal": {
+    "n": 12,
+    "bank_name": "Malabar Coastal Bank",
+    "page_sizes": [
+      [
+        595,
+        842
+      ]
+    ],
+    "creators": [
+      "MCB e-Statement Service"
+    ],
+    "fonts": [
+      "Liberation-Serif",
+      "Liberation-Serif-Bold"
+    ],
+    "header_labels": [
+      "Balance",
+      "Date",
+      "Deposit",
+      "Remarks",
+      "Withdrawal"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 390.598,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 465.993,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 557.262,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "Liberation-Serif"
+    ],
+    "table_font_sizes": [
+      8.0
+    ],
+    "date_shapes": [
+      "99-AAA-99"
+    ],
+    "amount_styles": [
+      [
+        "indian",
+        "CR"
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "Liberation-Serif-Bold"
+      ],
+      "sizes": [
+        15.0
+      ],
+      "x0_mean": 67.5,
+      "x0_std": 0.0
+    }
+  },
+  "narmada_gramin": {
+    "n": 12,
+    "bank_name": "Narmada Gramin Bank",
+    "page_sizes": [
+      [
+        595,
+        842
+      ]
+    ],
+    "creators": [
+      "NGB Core Banking System"
+    ],
+    "fonts": [
+      "DejaVu-Sans-Bold-Oblique-Semi-Condensed",
+      "DejaVu-Sans-Bold-Semi-Condensed",
+      "DejaVu-Sans-Semi-Condensed"
+    ],
+    "header_labels": [
+      "Balance",
+      "Date",
+      "Deposit",
+      "Description",
+      "S.No.",
+      "Withdrawal"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 432.877,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 495.212,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 557.561,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "DejaVu-Sans-Semi-Condensed"
+    ],
+    "table_font_sizes": [
+      7.8
+    ],
+    "date_shapes": [
+      "99.99.9999"
+    ],
+    "amount_styles": [
+      [
+        "none",
+        ""
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "DejaVu-Sans-Bold-Semi-Condensed"
+      ],
+      "sizes": [
+        16.0
+      ],
+      "x0_mean": 200.5,
+      "x0_std": 0.0
+    }
+  },
+  "sahyadri": {
+    "n": 12,
+    "bank_name": "Sahyadri Bank",
+    "page_sizes": [
+      [
+        595,
+        842
+      ]
+    ],
+    "creators": [
+      "SHB Digital Banking"
+    ],
+    "fonts": [
+      "Carlito",
+      "Carlito-Bold"
+    ],
+    "header_labels": [
+      "BALANCE",
+      "DATE",
+      "DEPOSITS",
+      "DESCRIPTION",
+      "REFERENCE",
+      "VALUE DATE",
+      "WITHDRAWALS"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 416.675,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 486.817,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 556.944,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "Carlito"
+    ],
+    "table_font_sizes": [
+      8.2
+    ],
+    "date_shapes": [
+      "99-AAA-9999"
+    ],
+    "amount_styles": [
+      [
+        "indian",
+        ""
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "Carlito-Bold"
+      ],
+      "sizes": [
+        17.0
+      ],
+      "x0_mean": 34.0,
+      "x0_std": 0.0
+    }
+  },
+  "tapti_valley": {
+    "n": 12,
+    "bank_name": "Tapti Valley Bank",
+    "page_sizes": [
+      [
+        842,
+        595
+      ]
+    ],
+    "creators": [
+      "TVB Digital Banking"
+    ],
+    "fonts": [
+      "DejaVu-Sans",
+      "DejaVu-Sans-Bold"
+    ],
+    "header_labels": [
+      "BALANCE (\u20b9)",
+      "CREDIT (\u20b9)",
+      "DATE",
+      "DEBIT (\u20b9)",
+      "NARRATION",
+      "REF NO.",
+      "VALUE DATE"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 661.546,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 732.586,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 803.631,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "DejaVu-Sans"
+    ],
+    "table_font_sizes": [
+      7.6
+    ],
+    "date_shapes": [
+      "99/99/9999"
+    ],
+    "amount_styles": [
+      [
+        "indian",
+        ""
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "DejaVu-Sans-Bold"
+      ],
+      "sizes": [
+        17.0
+      ],
+      "x0_mean": 34.0,
+      "x0_std": 0.0
+    }
+  },
+  "vindhya_state": {
+    "n": 12,
+    "bank_name": "Vindhya State Bank",
+    "page_sizes": [
+      [
+        595,
+        842
+      ]
+    ],
+    "creators": [
+      "VSB e-Statement Service"
+    ],
+    "fonts": [
+      "DejaVu-Sans",
+      "DejaVu-Sans-Bold"
+    ],
+    "header_labels": [
+      "Amt.",
+      "Cheque/Ref",
+      "Closing Balance",
+      "Date",
+      "Deposit Amt.",
+      "Description",
+      "S.No.",
+      "Withdrawal"
+    ],
+    "columns": {
+      "debit": {
+        "mean": 403.628,
+        "std": 0.0
+      },
+      "credit": {
+        "mean": 473.269,
+        "std": 0.0
+      },
+      "balance": {
+        "mean": 557.321,
+        "std": 0.0
+      }
+    },
+    "table_fonts": [
+      "DejaVu-Sans"
+    ],
+    "table_font_sizes": [
+      7.2
+    ],
+    "date_shapes": [
+      "99-99-9999"
+    ],
+    "amount_styles": [
+      [
+        "indian",
+        "Cr"
+      ]
+    ],
+    "masthead": {
+      "fonts": [
+        "DejaVu-Sans-Bold"
+      ],
+      "sizes": [
+        15.0
+      ],
+      "x0_mean": 67.5,
+      "x0_std": 0.0
+    }
+  }
+}
