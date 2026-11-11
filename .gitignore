@@ -40,3 +40,7 @@ experiments/checkpoints/
 .DS_Store
 node_modules/
 app/frontend/build/
+
+# Machine-specific run configs (copy the .example.yaml files)
+configs/*.yaml
+!configs/*.example.yaml
