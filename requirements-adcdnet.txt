@@ -5,7 +5,9 @@
 # For a machine without internet (the DGX), download wheels elsewhere with
 #   pip download -r requirements-adcdnet.txt --platform manylinux2014_x86_64 \
 #       --python-version 3.10 --only-binary=:all: -d wheels/
-# jpeg2dct has no wheels: build it on the target machine (needs a C compiler).
+# jpeg2dct has no wheels: it is compiled on the target machine and needs a C++ compiler and
+# the libjpeg headers (Ubuntu: sudo apt install build-essential libjpeg-dev). On the DGX,
+# ask the Centre for AI staff for these. Build it after installing numpy<2.
 albumentations==2.0.8
 numpy<2
 opencv-python-headless==4.10.0.84

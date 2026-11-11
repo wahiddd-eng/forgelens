@@ -95,7 +95,7 @@ template profiles on the same machine: they depend on the installed fonts.
 `scripts/eval_adcdnet.py` runs the official ADCD-Net code (`third_party/ADCD-Net`,
 unedited) with the released checkpoint on the seven Doc Protocol test sets and compares
 the per-image F1 with the published table. Its packages are in `requirements-adcdnet.txt`
-(install PyTorch first). Copy `configs/adcdnet_eval.example.yaml` to
+(install PyTorch first; `jpeg2dct` is compiled on install and needs `libjpeg-dev`). Copy `configs/adcdnet_eval.example.yaml` to
 `configs/adcdnet_eval.yaml`, set the paths, then:
 
 ```bash

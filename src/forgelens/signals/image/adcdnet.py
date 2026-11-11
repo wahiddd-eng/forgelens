@@ -134,17 +134,26 @@ def missing_packages() -> list[str]:
 
 
 def _lmdb_samples(path: Path) -> int | None:
+    """Number of images in a DocTamper LMDB, or None if lmdb is not installed.
+
+    Raises ValueError when the database cannot be read, e.g. after an incomplete copy.
+    """
     try:
         import lmdb
     except ImportError:
         return None
-    env = lmdb.open(str(path), readonly=True, lock=False, readahead=False, meminit=False)
+    try:
+        env = lmdb.open(str(path), readonly=True, lock=False, readahead=False, meminit=False)
+    except lmdb.Error as exc:
+        raise ValueError(f"cannot open {path} ({exc}); was the copy complete?") from exc
     try:
         with env.begin(write=False) as txn:
             value = txn.get(b"num-samples")
-        return int(value) if value is not None else None
     finally:
         env.close()
+    if value is None:
+        raise ValueError(f"{path} has no num-samples entry; is it a DocTamper LMDB?")
+    return int(value)
 
 
 def _check_doctamper(paths: Paths, name: str, settings: Settings, problems: list[str],
@@ -156,7 +165,11 @@ def _check_doctamper(paths: Paths, name: str, settings: Settings, problems: list
     if not (lmdb_dir / "data.mdb").exists():
         problems.append(f"{name}: no LMDB at {lmdb_dir} (expected data.mdb inside)")
         return
-    samples = _lmdb_samples(lmdb_dir)
+    try:
+        samples = _lmdb_samples(lmdb_dir)
+    except ValueError as exc:
+        problems.append(f"{name}: {exc}")
+        samples = None
     if settings.compression == "protocol" and not paths.jpeg_record(name, settings.min_qf).exists():
         problems.append(f"{name}: JPEG record {paths.jpeg_record(name, settings.min_qf)} not found "
                         "(the pks folder from the DocTamper repository)")
@@ -332,7 +345,9 @@ def worker_init(_worker_id: int) -> None:
     dataset = torch.utils.data.get_worker_info().dataset
     inner = getattr(dataset, "dataset", dataset)
     if hasattr(inner, "lmdb"):
-        inner.lmdb = lmdb.open(inner.lmdb.path(), max_readers=64, readonly=True, lock=False,
+        path = inner.lmdb.path()
+        inner.lmdb.close()  # this process's copy only; the parent's stays open
+        inner.lmdb = lmdb.open(path, max_readers=64, readonly=True, lock=False,
                                readahead=False, meminit=False)
 
 

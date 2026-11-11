@@ -112,6 +112,17 @@ def test_preflight_explains_ocr_masks_in_the_wrong_folder(tmp_path):
     assert not any("OCR" in p for p in problems) and any("OCR" in n for n in notes)
 
 
+def test_preflight_reports_an_unreadable_lmdb(tmp_path):
+    pytest.importorskip("lmdb")
+    lmdb_dir = tmp_path / "dt" / "DocTamperV1" / "DocTamperV1-FCD"
+    lmdb_dir.mkdir(parents=True)
+    (lmdb_dir / "data.mdb").write_bytes(b"half a copy")
+    paths = adcdnet.Paths(upstream=UPSTREAM, ckpt=tmp_path / "a", docres=tmp_path / "b",
+                          doctamper_root=tmp_path / "dt")
+    problems, _ = adcdnet.preflight(paths, ["FCD"], adcdnet.Settings(), "cpu")
+    assert any("FCD: cannot open" in p and "copy complete" in p for p in problems)
+
+
 def test_preflight_rejects_path_lists_from_another_machine(tmp_path):
     (tmp_path / "pkl").mkdir()
     entries = [("/elsewhere/a.jpg", "/elsewhere/a.png", "/elsewhere/ocr/a.jpg")]
@@ -163,7 +174,9 @@ def _make_doctamper(root: Path, name: str, n: int, broken: int | None = None) ->
     import numpy as np
 
     rng = np.random.default_rng(0)
-    env = lmdb.open(str(root / "DocTamperV1" / f"DocTamperV1-{name}"), map_size=1 << 26)
+    lmdb_dir = root / "DocTamperV1" / f"DocTamperV1-{name}"
+    lmdb_dir.mkdir(parents=True)
+    env = lmdb.open(str(lmdb_dir), map_size=1 << 26)
     with env.begin(write=True) as txn:
         txn.put(b"num-samples", str(n).encode())
         for i in range(n):
@@ -246,7 +259,7 @@ def _run(paths, out, *extra):
 
 def test_full_run_on_tiny_data(fake_setup, tmp_path):
     _, paths = fake_setup
-    assert _run(paths, tmp_path, "--save-masks", "1") == 0
+    assert _run(paths, tmp_path, "--save-masks", "1", "--workers", "2") == 0
     run_dir = tmp_path / "adcdnet_t"
     with open(run_dir / "FCD.csv") as f:
         rows = list(csv.DictReader(f))

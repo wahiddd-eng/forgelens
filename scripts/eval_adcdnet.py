@@ -268,7 +268,8 @@ def markdown(rows: dict[str, dict], avgs: dict, partial: bool, run: dict) -> str
         lines.append(f"| {labels[group]} | | | {a['f1']:.3f} | | {a['published_f1']:.3f} | "
                      f"{a['delta']:+.3f} | | |")
     env = run.get("environment", {})
-    lines += ["", (f"Code {run.get('git_commit')}, ADCD-Net {run.get('upstream_commit')}, "
+    dirty = " (with uncommitted changes)" if run.get("git_dirty") else ""
+    lines += ["", (f"Code {run.get('git_commit')}{dirty}, ADCD-Net {run.get('upstream_commit')}, "
                    f"PyTorch {env.get('torch')} on {env.get('gpu') or 'CPU'}; "
                    f"checkpoint sha256 {str(run.get('ckpt_sha256'))[:12]}."), ""]
     return "\n".join(lines)
