@@ -55,8 +55,20 @@ there directly (and never commit private data to it):
 git clone --recurse-submodules https://github.com/wahiddd-eng/forgelens.git ~/forgelens
 ```
 
-Download public datasets on the server too (AIForge-Doc from Hugging Face, with your token in
-`~/.cache/huggingface`, not in the repository).
+Download the data on the server too, inside tmux (it takes hours on the campus link):
+
+```bash
+tmux new -s data
+source ~/venvs/forgelens/bin/activate
+bash ~/forgelens/scripts/download_data.sh          # or name items: doctamper-meta adcdnet ...
+bash ~/forgelens/scripts/download_data.sh --check  # what is there and what is missing
+```
+
+It fetches DocTamper's JPEG tables (GitHub), the ADCD-Net checkpoints and OCR masks (Google
+Drive), the four cross-domain test sets (Hugging Face), DocTamper (Kaggle) and AIForge-Doc
+(Hugging Face, gated) into `~/forgelens-data`, in the layout the evaluation config expects.
+Log in first: `hf auth login` for Hugging Face, and put a Kaggle API token in
+`~/.kaggle/kaggle.json` (`chmod 600`). Archive passwords are asked for and never saved.
 
 Copy datasets and checkpoints the same way (`rsync -av --partial --progress`, which can
 resume an interrupted copy). **Real bank statements never go on the DGX**: it is shared and
