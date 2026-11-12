@@ -14,3 +14,4 @@ Command-line entry points. Each one's `--help` and module docstring give the det
 | `free_gpus.sh` | Pick up to 2 free GPUs on the shared DGX for `CUDA_VISIBLE_DEVICES` |
 | `backup.py`, `with_backup.sh` | Periodic incremental backups of results, logs and checkpoints off the DGX |
 | `download_data.sh` | Download the Phase 1 datasets and checkpoints into `~/forgelens-data` |
+| `make_ocr_masks.sh` | OCR masks and path lists for the four cross-domain test sets (PaddleOCR, own environment) |

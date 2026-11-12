@@ -199,7 +199,7 @@ cross_domain() {
     for d in "$dst"/*_test; do [[ -d $d/ocr ]] || missing=1; done
     if (( missing )); then
         warn "some sets have no ocr/ folder: their OCR masks must be made with upstream's"
-        warn "seg_char.py (PaddleOCR) before build_path_pkl.py; ask Claude for that step"
+        warn "seg_char.py (PaddleOCR): run  bash scripts/make_ocr_masks.sh"
     fi
 }
 
