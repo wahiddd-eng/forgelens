@@ -14,7 +14,8 @@
 #   doctamper-meta  qt_table.pk and the JPEG records (pks/) from the DocTamper GitHub repo
 #   adcdnet         ADCD-Net checkpoint, DocRes checkpoint, DocTamper OCR masks (Google Drive)
 #   cross-domain    T-SROIE, OSTF, TPIC-13, RTM test sets (Hugging Face, Doc Protocol)
-#   doctamper       DocTamper LMDBs (Kaggle; needs ~/.kaggle/kaggle.json)
+#   doctamper       DocTamper test LMDBs: FCD, SCD, TestingSet (Kaggle, ~7 GB; needs a token)
+#   doctamper-train DocTamper TrainingSet LMDB (Kaggle, ~16.5 GB; for fine-tuning only)
 #   aiforge         AIForge-Doc v1 (Hugging Face, gated: needs your token and granted access)
 #
 # Accounts: `hf auth login` (or huggingface-cli login) for Hugging Face; a Kaggle API token in
@@ -203,44 +204,40 @@ cross_domain() {
     fi
 }
 
-doctamper() {
-    local dst="$DATA/DocTamper/DocTamperV1"
-    if [[ -f $dst/DocTamperV1-TestingSet/data.mdb && -f $dst/DocTamperV1-FCD/data.mdb \
-          && -f $dst/DocTamperV1-SCD/data.mdb ]]; then ok "already there: $dst"; return; fi
-    if [[ ! -f $HOME/.kaggle/kaggle.json && -z ${KAGGLE_KEY:-} ]]; then
+kaggle_cli() {
+    if command -v kaggle >/dev/null; then kaggle "$@"; else python -m kaggle "$@"; fi
+}
+
+doctamper_split() {  # doctamper_split <TestingSet|FCD|SCD|TrainingSet>
+    local name="DocTamperV1-$1" dst="$DATA/DocTamper/DocTamperV1"
+    local dir="$dst/$name"
+    if [[ -f $dir/data.mdb && ! -f $dir/.partial ]]; then ok "$name already there"; return; fi
+    mkdir -p "$dir"
+    touch "$dir/.partial"
+    # The Kaggle copy holds the LMDB files themselves (no archive, no password); fetch the one
+    # big file per split. Kaggle may send it zipped.
+    kaggle_cli datasets download -d "$KAGGLE_DOCTAMPER" -f "$name/data.mdb" -p "$dir" --force \
+        || return 1
+    local z
+    for z in "$dir"/*.zip; do
+        [[ -e $z ]] || continue
+        unzip -q -o "$z" -d "$dir" && rm -f "$z" || return 1
+    done
+    [[ -f $dir/data.mdb ]] || { warn "$name: no data.mdb after the download"; return 1; }
+    rm -f "$dir/.partial"
+    ok "$name ($(du -h "$dir/data.mdb" | cut -f1))"
+}
+
+doctamper() {  # the three test sets; doctamper-train adds the 16 GB training set
+    if [[ ! -f $HOME/.kaggle/kaggle.json && -z ${KAGGLE_KEY:-} && -z ${KAGGLE_API_TOKEN:-} ]]; then
         warn "no Kaggle token: create one at kaggle.com -> Settings -> API -> Create New Token,"
         warn "copy kaggle.json to ~/.kaggle/ and run: chmod 600 ~/.kaggle/kaggle.json"
         return 1
     fi
     need_py kaggle kaggle || return 1
-    local dl="$DATA/.download/doctamper"
-    mkdir -p "$dl"
-    if ! ls "$dl"/*.zip >/dev/null 2>&1; then
-        if command -v kaggle >/dev/null; then
-            kaggle datasets download -d "$KAGGLE_DOCTAMPER" -p "$dl" || return 1
-        else
-            python -m kaggle datasets download -d "$KAGGLE_DOCTAMPER" -p "$dl" || return 1
-        fi
-    fi
-    local z
-    for z in "$dl"/*.zip; do unpack "$z" "$dl/x" || return 1; done
-    # Nested archives (one per split) are common; unpack those too.
-    find "$dl/x" -type f \( -name '*.zip' -o -name '*.7z' -o -name '*.tar*' \) -print0 |
-        while IFS= read -r -d '' z; do unpack "$z" "$(dirname "$z")" || exit 1; done || return 1
-    mkdir -p "$dst"
-    local found=0 mdb dir name
-    while IFS= read -r mdb; do
-        dir=$(dirname "$mdb"); name=$(basename "$dir")
-        case "$name" in
-            *Train*) name=DocTamperV1-TrainingSet ;; *Test*) name=DocTamperV1-TestingSet ;;
-            *FCD*) name=DocTamperV1-FCD ;; *SCD*) name=DocTamperV1-SCD ;; *) continue ;;
-        esac
-        [[ -e $dst/$name ]] || ln -s "$dir" "$dst/$name"
-        found=$((found + 1))
-    done < <(find "$dl/x" -name data.mdb)
-    (( found )) || { warn "no LMDB (data.mdb) folders found in the Kaggle download"; return 1; }
-    ok "$(ls "$dst" | tr '\n' ' ') in $dst (links into $dl/x)"
-    tidy "$dl"
+    local split status=0
+    for split in "$@"; do doctamper_split "$split" || status=1; done
+    return $status
 }
 
 aiforge() {
@@ -253,16 +250,23 @@ check() {
     step "What is in $DATA"
     local p
     for p in DocTamper/exp_data/qt_table.pk DocTamper/exp_data/pks adcdnet/ADCDNet.pth \
-             adcdnet/docres.pkl adcdnet/DocTamperOCR DocTamper/DocTamperV1/DocTamperV1-TestingSet \
-             DocTamper/DocTamperV1/DocTamperV1-FCD DocTamper/DocTamperV1/DocTamperV1-SCD \
+             adcdnet/docres.pkl adcdnet/DocTamperOCR \
              cutted_datasets_fakes/OSTF_test AIForge-Doc-v1/.complete; do
         if [[ -e $DATA/$p ]]; then ok "${p%/.complete} ($(du -shL "$DATA/${p%/.complete}" 2>/dev/null | cut -f1))"
         else warn "missing: ${p%/.complete}"; fi
     done
-    if [[ -e $DATA/DocTamper/DocTamperV1/DocTamperV1-TrainingSet ]]; then
+    local split dir
+    for split in FCD SCD TestingSet; do
+        dir="$DATA/DocTamper/DocTamperV1/DocTamperV1-$split"
+        if [[ -f $dir/data.mdb && ! -f $dir/.partial ]]; then
+            ok "DocTamper/DocTamperV1/DocTamperV1-$split ($(du -sh "$dir" | cut -f1))"
+        else warn "missing: DocTamper/DocTamperV1/DocTamperV1-$split"; fi
+    done
+    dir="$DATA/DocTamper/DocTamperV1/DocTamperV1-TrainingSet"
+    if [[ -f $dir/data.mdb && ! -f $dir/.partial ]]; then
         ok "DocTamper/DocTamperV1/DocTamperV1-TrainingSet (for fine-tuning)"
     else
-        echo "  - DocTamperV1-TrainingSet not there (needed only for fine-tuning, not for evaluation)"
+        echo "  - DocTamperV1-TrainingSet not there (only for fine-tuning: run with doctamper-train)"
     fi
     df -h "$DATA" | tail -1 | awk '{print "  free space: " $4}'
 }
@@ -280,7 +284,8 @@ for item in "${items[@]}"; do
         doctamper-meta) doctamper_meta ;;
         adcdnet) adcdnet ;;
         cross-domain) cross_domain ;;
-        doctamper) doctamper ;;
+        doctamper) doctamper FCD SCD TestingSet ;;
+        doctamper-train) doctamper TrainingSet ;;
         aiforge) aiforge ;;
         *) warn "unknown item $item (choose from: ${ALL[*]})"; false ;;
     esac || { failed+=("$item"); warn "$item did not finish; the rest continue"; }
