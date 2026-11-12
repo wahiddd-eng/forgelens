@@ -11,3 +11,4 @@ Command-line entry points. Each one's `--help` and module docstring give the det
 | `eval_signals.py`, `eval_financial.py`, `compare_results.py` | Evaluate the rule-based signals |
 | `eval_adcdnet.py` | Reproduce ADCD-Net's Doc Protocol results with the released checkpoint |
 | `setup_dgx.sh` | Build the ADCD-Net environment on the DGX (or any Linux GPU machine) without sudo |
+| `free_gpus.sh` | Pick up to 2 free GPUs on the shared DGX for `CUDA_VISIBLE_DEVICES` |

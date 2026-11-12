@@ -51,8 +51,8 @@ if command -v nvidia-smi >/dev/null; then
         --format=csv,noheader | sed 's/^/  GPU /'
     gpus=$(nvidia-smi -L | wc -l)
     if [[ $gpus -gt 1 && -z "${CUDA_VISIBLE_DEVICES:-}" ]]; then
-        warn "$gpus GPUs are visible but one is allotted to you. Ask the Centre for AI which"
-        warn "index is yours and add  export CUDA_VISIBLE_DEVICES=<index>  to ~/.bashrc"
+        warn "$gpus GPUs are visible; we may use at most 2, whichever are free. Pick them"
+        warn "per job:  export CUDA_VISIBLE_DEVICES=\$(bash scripts/free_gpus.sh 2)"
     elif [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]]; then
         echo "  CUDA_VISIBLE_DEVICES=$CUDA_VISIBLE_DEVICES"
     fi

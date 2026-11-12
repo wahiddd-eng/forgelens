@@ -1,6 +1,7 @@
 # Working on the SRMIST DGX A100
 
-One A100 (40 GB) and 500 GB are allotted to ForgeLens, reachable only from the one
+Up to two A100s (40 GB each), whichever are free, and 500 GB are allotted to ForgeLens,
+reachable only from the one
 registered laptop on the campus Wi-Fi. The account name and first password are in the
 Centre for AI's email to Dr. Gopinath; never put them in this repository.
 
@@ -27,10 +28,24 @@ ssh-copy-id <user>@172.16.0.32
 Then, on the server:
 
 ```bash
-nvidia-smi                   # if all GPUs are listed, ask which index is ours
-echo 'export CUDA_VISIBLE_DEVICES=<index>' >> ~/.bashrc && source ~/.bashrc
+nvidia-smi                   # all 8 GPUs are listed; most are in use by other projects
 df -h ~                      # where the 500 GB is
 ```
+
+## Choosing GPUs
+
+All eight GPUs are visible, and we may use at most two, whichever are free. Do not fix GPU
+numbers in `~/.bashrc`; pick free ones when each job starts:
+
+```bash
+export CUDA_VISIBLE_DEVICES=$(bash scripts/free_gpus.sh 2) || exit 1   # two free GPUs
+export CUDA_VISIBLE_DEVICES=$(bash scripts/free_gpus.sh 2 --min 1)     # two, or one if that is all
+export CUDA_VISIBLE_DEVICES=$(bash scripts/free_gpus.sh 2 --wait)      # wait until two are free
+```
+
+A GPU counts as free when under 1000 MiB of its memory is used and it is under 10% busy.
+Two evaluation runs can share the two GPUs (one each, with different `--tag`s); training
+uses both through upstream's multi-GPU support.
 
 ## Getting the code and data onto the server
 
@@ -76,5 +91,5 @@ python scripts/eval_adcdnet.py --config configs/adcdnet_eval.yaml --tag dgx --re
   needed after 3 months.
 - The server is rebooted weekly and nothing is backed up: save checkpoints often, use
   `--resume`, and copy results back to the laptop after each run.
-- About 400 GPU-hours on one GPU is roughly 17 days of continuous use, so debug on the home
-  PC or a rented GPU and use the DGX for full runs only.
+- About 400 GPU-hours is roughly 8–9 days of continuous use on two GPUs (17 on one), so
+  debug on the home PC or a rented GPU and use the DGX for full runs only.
