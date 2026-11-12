@@ -1,8 +1,7 @@
 # Working on the SRMIST DGX A100
 
 Up to two A100s (40 GB each), whichever are free, and 500 GB are allotted to ForgeLens,
-reachable only from the one
-registered laptop on the campus Wi-Fi. The account name and first password are in the
+reachable only from the one registered laptop on the campus Wi-Fi. The account name and first password are in the
 Centre for AI's email to Dr. Gopinath; never put them in this repository.
 
 ## Before the first login
@@ -49,12 +48,15 @@ uses both through upstream's multi-GPU support.
 
 ## Getting the code and data onto the server
 
-The repository is private, so either clone it with a read-only GitHub personal access
-token, or copy it from the laptop:
+The server reaches GitHub, Hugging Face and PyPI, and the repository is public, so clone it
+there directly (and never commit private data to it):
 
 ```bash
-rsync -av --exclude data --exclude .venv ~/forgelens <user>@172.16.0.32:~/
+git clone --recurse-submodules https://github.com/wahiddd-eng/forgelens.git ~/forgelens
 ```
+
+Download public datasets on the server too (AIForge-Doc from Hugging Face, with your token in
+`~/.cache/huggingface`, not in the repository).
 
 Copy datasets and checkpoints the same way (`rsync -av --partial --progress`, which can
 resume an interrupted copy). **Real bank statements never go on the DGX**: it is shared and
