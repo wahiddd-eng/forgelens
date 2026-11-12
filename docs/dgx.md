@@ -87,6 +87,32 @@ python scripts/eval_adcdnet.py --config configs/adcdnet_eval.yaml --tag dgx --re
 # detach: Ctrl-b d      later: tmux attach -t eval
 ```
 
+## Backups
+
+Nothing on the DGX is backed up, so copy results, logs and checkpoints off it while jobs run.
+`scripts/backup.py` sends what changed to a **private** Hugging Face repository (it refuses a
+public one), every 30 minutes by default. Set it up once:
+
+```bash
+huggingface-cli login       # paste a write token; it stays in ~/.cache/huggingface
+echo 'export FORGELENS_BACKUP=hf:<hf-user>/forgelens-dgx-backup' >> ~/.bashrc
+```
+
+Then wrap each job, which backs up during the job and once more when it ends, even if it
+fails:
+
+```bash
+bash scripts/with_backup.sh python scripts/eval_adcdnet.py --config configs/adcdnet_eval.yaml --tag dgx --resume
+BACKUP_ARGS="--source adcd=~/forgelens-data/exp_out" bash scripts/with_backup.sh <training command>
+```
+
+It backs up `experiments/results`, `experiments/logs` and `experiments/checkpoints` (add
+folders with `--source name=path`), keeps the 3 newest checkpoints per folder plus the
+best-scoring one, never deletes a backed-up file because it vanished on the DGX, and refuses
+PDFs and anything under `data/` or `real*` folders. Get everything back with
+`python scripts/backup.py restore --dest $FORGELENS_BACKUP --to ~/restored`. Log:
+`~/forgelens_backup.log`.
+
 ## Rules that affect planning
 
 - Allocations last 20 days; request renewal at least 4 days before expiry. A new form is

@@ -18,4 +18,5 @@ six
 pillow
 tqdm
 pyyaml
+huggingface_hub  # dataset downloads and scripts/backup.py
 jpeg2dct
