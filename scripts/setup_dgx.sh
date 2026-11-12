@@ -157,15 +157,18 @@ else
         echo "  no libjpeg headers: building libjpeg-turbo $LIBJPEG_VERSION into $VENV"
         command -v cmake >/dev/null || "${PIP[@]}" install --quiet cmake
         build="$(mktemp -d)"
+        url="https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/$LIBJPEG_VERSION.tar.gz"
         if [[ -n "${LIBJPEG_TARBALL:-}" ]]; then
-            cp "$LIBJPEG_TARBALL" "$build/src.tar.gz"
-        else
-            url="https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/$LIBJPEG_VERSION.tar.gz"
-            curl -fsSL "$url" -o "$build/src.tar.gz" || wget -q "$url" -O "$build/src.tar.gz" \
-                || die "cannot download libjpeg-turbo; get $url elsewhere and run again with
+            tar xzf "$LIBJPEG_TARBALL" -C "$build"
+        elif curl -fsSL "$url" -o "$build/src.tar.gz" 2>/dev/null \
+                || wget -q "$url" -O "$build/src.tar.gz" 2>/dev/null; then
+            tar xzf "$build/src.tar.gz" -C "$build"
+        elif ! git -c advice.detachedHead=false clone -q --depth 1 --branch "$LIBJPEG_VERSION" \
+                https://github.com/libjpeg-turbo/libjpeg-turbo.git \
+                "$build/libjpeg-turbo-$LIBJPEG_VERSION"; then
+            die "cannot download libjpeg-turbo; get $url elsewhere and run again with
   LIBJPEG_TARBALL=/path/to/it"
         fi
-        tar xzf "$build/src.tar.gz" -C "$build"
         simd=ON
         command -v nasm >/dev/null || command -v yasm >/dev/null || simd=OFF
         # Static library with position-independent code: jpeg2dct then carries libjpeg
@@ -177,8 +180,10 @@ else
         cmake --build "$build/out" -j "$(nproc)" > "$build/build.log" \
             || die "libjpeg-turbo build failed: $build/build.log"
         cmake --install "$build/out" > /dev/null
+        # -L (not LIBRARY_PATH) so the linker takes our libjpeg.a before a system
+        # libjpeg.so: headers and library must be the same libjpeg version.
         export CPATH="$VENV/include${CPATH:+:$CPATH}"
-        export LIBRARY_PATH="$VENV/lib${LIBRARY_PATH:+:$LIBRARY_PATH}"
+        export LDFLAGS="-L$VENV/lib${LDFLAGS:+ $LDFLAGS}"
     fi
     "${PIP[@]}" install --no-build-isolation jpeg2dct \
         || die "jpeg2dct did not build; the compiler output is above"
