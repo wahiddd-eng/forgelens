@@ -120,27 +120,47 @@ adcdnet() {
     if [[ -f $dst/ADCDNet.pth && -f $dst/docres.pkl && -d $dst/DocTamperOCR ]]; then
         ok "already there: $dst"; return
     fi
-    need_py gdown gdown || return 1
-    mkdir -p "$dst/.download"
-    local out="$dst/.download/adcdnet_data"
-    python -m gdown --continue "$ADCD_GDRIVE_ID" -O "$out" || {
-        warn "Google Drive refused or is unreachable. Download it on another machine from"
-        warn "https://drive.google.com/file/d/$ADCD_GDRIVE_ID and copy it to $out"
-        return 1
-    }
-    local kind  # gdown names the file after nothing useful; find out what it is
-    kind=$(archive_kind "$out")
-    [[ -n $kind ]] || { warn "the Google Drive file is not an archive: $(head -c 200 "$out" | tr -cd '[:print:]')"; return 1; }
-    mv "$out" "$out.$kind"; out="$out.$kind"
-    unpack "$out" "$dst/.download/x" || return 1
-    # Put the three pieces at the top of $dst wherever the archive nested them.
-    local f
+    local x="$dst/.download/x"
+    if [[ ! -d $x ]]; then
+        need_py gdown gdown || return 1
+        mkdir -p "$dst/.download"
+        local out="$dst/.download/adcdnet_data"
+        python -m gdown --continue "$ADCD_GDRIVE_ID" -O "$out" || {
+            warn "Google Drive refused or is unreachable. Download it on another machine from"
+            warn "https://drive.google.com/file/d/$ADCD_GDRIVE_ID and copy it to $out"
+            return 1
+        }
+        local kind  # gdown's file name says nothing; find out what it is
+        kind=$(archive_kind "$out")
+        [[ -n $kind ]] || { warn "the Google Drive file is not an archive: $(head -c 200 "$out" | tr -cd '[:print:]')"; return 1; }
+        mv "$out" "$out.$kind"
+        unpack "$out.$kind" "$x" || return 1
+    fi
+    # The archive nests further archives (DocTamperOCR.zip inside a folder): unpack those too.
+    local z
+    while IFS= read -r -d '' z; do
+        [[ -e $z.unpacked ]] || { unpack "$z" "$(dirname "$z")" && touch "$z.unpacked"; } || return 1
+    done < <(find "$x" -type f \( -name '*.zip' -o -name '*.7z' -o -name '*.tar*' \) -print0)
+    # Put each piece at the top of $dst, wherever and however (letter case) the archive has it.
+    local f found missing=()
     for f in ADCDNet.pth docres.pkl; do
-        [[ -f $dst/$f ]] || mv "$(find "$dst/.download/x" -name "$f" -print -quit)" "$dst/" || return 1
+        [[ -f $dst/$f ]] && continue
+        found=$(find "$x" -type f -iname "$f" -print -quit)
+        if [[ -n $found ]]; then mv "$found" "$dst/$f"; else missing+=("$f"); fi
     done
-    [[ -d $dst/DocTamperOCR ]] || \
-        mv "$(find "$dst/.download/x" -type d -name DocTamperOCR -print -quit)" "$dst/" || return 1
-    ok "ADCDNet.pth, docres.pkl and DocTamperOCR/ ($(ls "$dst/DocTamperOCR" | tr '\n' ' ')) in $dst"
+    if [[ ! -d $dst/DocTamperOCR ]]; then
+        found=$(find "$x" -type d -iname DocTamperOCR -print -quit)
+        if [[ -n $found ]]; then mv "$found" "$dst/DocTamperOCR"; else missing+=(DocTamperOCR/); fi
+    fi
+    [[ -d $dst/DocTamperOCR ]] && ok "DocTamperOCR/ ($(ls "$dst/DocTamperOCR" | tr '\n' ' ')) in $dst"
+    for f in ADCDNet.pth docres.pkl; do [[ -f $dst/$f ]] && ok "$f in $dst"; done
+    if (( ${#missing[@]} )); then
+        warn "the Google Drive archive has no ${missing[*]}. It holds:"
+        find "$x" -maxdepth 3 -not -name '*.pkl' | sed "s|$x|    |" | head -15
+        warn "get the missing files from the ADCD-Net authors (README or GitHub issues) and put"
+        warn "them in $dst"
+        return 1
+    fi
     tidy "$dst/.download"
 }
 
