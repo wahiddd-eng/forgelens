@@ -137,7 +137,8 @@ EOF
 
 # ------------------------------------------------------------------ 5. packages
 step "5/7 ForgeLens and ADCD-Net packages"
-"${PIP[@]}" install --quiet $(grep -vE '^\s*(#|$)|jpeg2dct' "$REPO/requirements-adcdnet.txt")
+# pip -r cannot skip one package, so list the file's packages without comments or jpeg2dct
+"${PIP[@]}" install --quiet $(sed 's/#.*//' "$REPO/requirements-adcdnet.txt" | grep -vE '^\s*$|jpeg2dct')
 "${PIP[@]}" install --quiet -e "$REPO[dev]"  # not [ml]: it pulls opencv-python and newer numpy
 if [[ ! -f "$REPO/third_party/ADCD-Net/model/model.py" ]]; then
     echo "  fetching the ADCD-Net submodule"
