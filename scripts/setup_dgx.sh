@@ -34,6 +34,7 @@ TORCH_SPEC="${TORCH_SPEC:-torch==2.3.0 torchvision==0.18.0}"
 LIBJPEG_VERSION="3.0.4"
 LOG="$HOME/forgelens_setup.log"
 
+exec 3>&1 4>&2                      # the terminal, for pip's progress bar
 exec > >(tee -a "$LOG") 2>&1
 step() { printf '\n==> %s\n' "$*"; }
 warn() { printf '  ! %s\n' "$*"; }
@@ -112,8 +113,11 @@ fi
 
 # ------------------------------------------------------------------ 4. PyTorch
 step "4/7 PyTorch ($TORCH_SPEC)"
+# About 3 GB. Written straight to the terminal so pip shows its progress bar (it hides it when
+# output goes through tee); pip writes its own full log to $LOG.
+echo "  downloading about 3 GB; on a slow connection this takes an hour or more"
 # shellcheck disable=SC2086
-"${PIP[@]}" install $TORCH_SPEC
+"${PIP[@]}" install --log "$LOG" $TORCH_SPEC >&3 2>&4
 python - <<'EOF'
 import torch
 print(f"  torch {torch.__version__}, CUDA {torch.version.cuda}, "
