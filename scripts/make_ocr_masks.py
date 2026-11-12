@@ -37,9 +37,17 @@ class PaddleDetector:
     """Upstream's TextDetector, unchanged in what it computes."""
 
     def __init__(self, device: str = "cpu"):
+        import os
+
         from paddleocr import TextDetection
 
-        self.model = TextDetection(model_name=MODEL, device=device)
+        options = {}
+        if device == "cpu":
+            # Paddle 3.x's oneDNN CPU backend fails on this model ("ConvertPirAttribute2Runtime
+            # Attribute not support"); the plain CPU kernels compute the same detections.
+            options = {"enable_mkldnn": False,
+                       "cpu_threads": int(os.environ.get("OMP_NUM_THREADS", "16"))}
+        self.model = TextDetection(model_name=MODEL, device=device, **options)
 
     def mask(self, img_path: Path, shape: tuple[int, int]):
         import cv2
