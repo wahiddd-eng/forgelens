@@ -105,6 +105,9 @@ python scripts/eval_adcdnet.py --config configs/adcdnet_eval.yaml --tag smoke --
 python scripts/eval_adcdnet.py --config configs/adcdnet_eval.yaml --tag dgx --resume
 ```
 
+On the college DGX A100, `scripts/setup_dgx.sh` builds the whole environment without sudo;
+see `docs/dgx.md` for access, the first login and the rules.
+
 `--check` verifies packages, checkpoints, the data layout, OCR masks and GPU support in
 seconds. Results go to `experiments/results/adcdnet_<tag>/`: a CSV per test set (one row
 per image), and `summary.md`/`.json` with the published scores beside ours and the code,
