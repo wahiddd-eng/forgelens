@@ -30,7 +30,7 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 | Item | Phase | Owner | Notes |
 | --- | --- | --- | --- |
 | ADCD-Net on rendered synthetic statement pages | Phase 1 | Both | Page wrapper and evaluation written (`signals/image/pages.py`, `scripts/eval_adcdnet_pages.py`, 13 Nov); run on the DGX after building the set with `scripts/make_synthetic_set.sh` |
-| Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Ask the DocTamper authors first whether training alongside our data counts as "integration with other datasets"; use their mask thresholds 8 and 160 |
+| Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Joint training with DocTamper confirmed allowed by its authors (13 Nov), weights may be released; use their mask thresholds 8 and 160 |
 | Consent form and collection log for real statements | Phase 2 | Wahid | Target 100 statements (minimum 50) from at least 8 banks; kept only on local encrypted storage |
 | PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Optional now that the DGX is set up; for debugging at home |
 
@@ -42,7 +42,7 @@ Passwords are shared privately between team members and are **never** written in
 
 | Dataset | Source | Requested | Status | Licence / terms |
 | --- | --- | --- | --- | --- |
-| DocTamper | [qcf-568/DocTamper](https://github.com/qcf-568/DocTamper) | 4 Nov 2026 (email from SRM account) | Granted 4 Nov 2026 | Non-commercial only; no redistribution; no integration with other datasets |
+| DocTamper | [qcf-568/DocTamper](https://github.com/qcf-568/DocTamper) | 4 Nov 2026 (email from SRM account) | Granted 4 Nov 2026 | Non-commercial only; no redistribution; no DocTamper samples in any released dataset (joint training and releasing trained weights confirmed allowed by the authors, 13 Nov 2026) |
 | TFR benchmark | [qcf-568/TextShield](https://github.com/qcf-568/TextShield) | 4 Nov 2026 (email) | Granted 4 Nov 2026 | Same terms as DocTamper |
 | AIForge-Doc v1 | [Scam-AI/AIForge-Doc-v1](https://huggingface.co/datasets/Scam-AI/AIForge-Doc-v1) | 4 Nov 2026 (Hugging Face form) | Granted 5 Nov 2026; downloaded to the DGX 12 Nov (9.4 GB) | CC BY-NC-SA 4.0 (non-commercial) |
 | Doc Protocol cross-domain sets | [Jason37437/Doc-Protocol-Data](https://huggingface.co/datasets/Jason37437/Doc-Protocol-Data) | Public | Downloaded to the DGX 12 Nov | Terms of each source dataset |
@@ -137,7 +137,7 @@ ADCD-Net on AI-made edits, 13 Nov 2026, same checkpoint, AIForge-Doc v1 test spl
 
 The base model mostly misses diffusion inpainting: F1 0.176 against 0.771 on DocTamper, close to its weakest Doc Protocol set (RTM, 0.158).
 
-**Blockers:** None. Asked the DocTamper authors on 13 Nov (reply to the original thread) whether fine-tuning on DocTamper together with our own synthetic data counts as "integration with other datasets", and whether the resulting weights may be published; awaiting their answer before any joint training.
+**Blockers:** None. The DocTamper authors answered on 13 Nov: training on DocTamper together with our own synthetic data is allowed (their "integration" ban means putting DocTamper samples into a released dataset), and the resulting model weights may be released publicly, provided no DocTamper images are redistributed or included in any released dataset.
 
 **Next week:**
 
