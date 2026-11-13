@@ -29,7 +29,6 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 
 | Item | Phase | Owner | Notes |
 | --- | --- | --- | --- |
-| ADCD-Net on AIForge-Doc v1 | Phase 1 | Dhruv | Needs a loader and OCR masks; first measure of AI-made edits |
 | Page-image wrapper in `src/forgelens/signals/image/` | Phase 1 | Dhruv | Runs ADCD-Net on any single page image; needed in Phase 3 |
 | ADCD-Net on rendered synthetic statement pages | Phase 1 | Both | Especially the reprinted and rasterised forgeries, where all PDF signals abstain |
 | Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Ask the DocTamper authors first whether training alongside our data counts as "integration with other datasets"; use their mask thresholds 8 and 160 |
@@ -130,12 +129,21 @@ Cross-domain sets, 13 Nov 2026, same checkpoint, OCR masks made with `scripts/ma
 
 All seven Doc Protocol scores now match the paper (overall mean 0.588). No image failed. Code `7a75d98`.
 
+ADCD-Net on AI-made edits, 13 Nov 2026, same checkpoint, AIForge-Doc v1 test split (`experiments/results/adcdnet_dgx-aiforge.md`). No published score exists:
+
+| Set | Images | F1 | 95% CI | Flagged (>1% of pixels) |
+| --- | ---: | ---: | --- | ---: |
+| AIForge-Doc, AI-inpainted | 812 | 0.176 | 0.154–0.197 | 12.1% |
+| AIForge-Doc, authentic originals | 812 | – | – | 2.7% (false alarms) |
+
+The base model mostly misses diffusion inpainting: F1 0.176 against 0.771 on DocTamper, close to its weakest Doc Protocol set (RTM, 0.158).
+
 **Blockers:** None. Asked the DocTamper authors on 13 Nov (reply to the original thread) whether fine-tuning on DocTamper together with our own synthetic data counts as "integration with other datasets", and whether the resulting weights may be published; awaiting their answer before any joint training.
 
 **Next week:**
 
 - Wahid: draft the consent form and collection log and start collecting real statements; send Dr. Gopinath an update.
-- Dhruv: run ADCD-Net on AIForge-Doc; start the page-image wrapper.
+- Dhruv: start the page-image wrapper; add TFR to the download script and evaluate it.
 
 **Guide feedback:** To be added.
 
