@@ -107,7 +107,7 @@ Renew the DGX allocation at least 4 days before each 20-day period ends; a new f
 
 **Results / numbers:**
 
-ADCD-Net, released checkpoint, Doc Protocol, 12 Nov 2026, one A100 (`experiments/results/adcdnet_dgx/summary.md`). Per-image F1, 95% CI of the mean:
+ADCD-Net, released checkpoint, Doc Protocol, 12 Nov 2026, one A100 (`experiments/results/adcdnet_dgx.md`). Per-image F1, 95% CI of the mean:
 
 | Set | Images | F1 | 95% CI | Published |
 | --- | ---: | ---: | --- | ---: |
@@ -118,7 +118,7 @@ ADCD-Net, released checkpoint, Doc Protocol, 12 Nov 2026, one A100 (`experiments
 
 No image failed. Code `0ba4786`, ADCD-Net `169d04d`, checkpoint sha256 `8e98674c0415…`.
 
-Cross-domain sets, 13 Nov 2026, same checkpoint, OCR masks made with `scripts/make_ocr_masks.sh` (`experiments/results/adcdnet_dgx-cross/summary.md`):
+Cross-domain sets, 13 Nov 2026, same checkpoint, OCR masks made with `scripts/make_ocr_masks.sh` (`experiments/results/adcdnet_dgx-cross.md`):
 
 | Set | Images | F1 | 95% CI | Published |
 | --- | ---: | ---: | --- | ---: |
