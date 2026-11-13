@@ -130,11 +130,11 @@ Cross-domain sets, 13 Nov 2026, same checkpoint, OCR masks made with `scripts/ma
 
 All seven Doc Protocol scores now match the paper (overall mean 0.588). No image failed. Code `7a75d98`.
 
-**Blockers:** None. To ask the DocTamper authors whether fine-tuning on DocTamper together with our own data is allowed under "no integration with other datasets".
+**Blockers:** None. Asked the DocTamper authors on 13 Nov (reply to the original thread) whether fine-tuning on DocTamper together with our own synthetic data counts as "integration with other datasets", and whether the resulting weights may be published; awaiting their answer before any joint training.
 
 **Next week:**
 
-- Wahid: draft the consent form and collection log and start collecting real statements; send Dr. Gopinath an update; email the DocTamper authors about the licence question.
+- Wahid: draft the consent form and collection log and start collecting real statements; send Dr. Gopinath an update.
 - Dhruv: run ADCD-Net on AIForge-Doc; start the page-image wrapper.
 
 **Guide feedback:** To be added.
