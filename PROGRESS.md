@@ -11,7 +11,7 @@
 | Phase | Dates | Owner | Status |
 | --- | --- | --- | --- |
 | Phase 0 — Setup and 0th review | 4–15 Nov 2026 | Both | In progress |
-| Phase 1 — Base model reproduction (ADCD-Net) | 16 Nov – 20 Dec 2026 | Dhruv | In progress (started early, 12 Nov): in-domain results reproduced exactly |
+| Phase 1 — Base model reproduction (ADCD-Net) | 16 Nov – 20 Dec 2026 | Dhruv | In progress (started early, 12 Nov): all seven Doc Protocol results reproduced (13 Nov) |
 | Phase 2 — Dataset generation | 16 Nov 2026 – 10 Jan 2027 | Wahid | In progress (started early): generator with 10 bank layouts, PDF-edit and rebuild forgeries |
 | Phase 3 — Signal modules | 1–31 Jan 2027 | Both | Not started |
 | Phase 4 — Fusion and evaluation | 1–28 Feb 2027 | Both | Not started |
@@ -29,7 +29,6 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 
 | Item | Phase | Owner | Notes |
 | --- | --- | --- | --- |
-| Evaluate the four cross-domain sets (T-SROIE, OSTF, TPIC-13, RTM) | Phase 1 | Dhruv | OCR masks being made on the DGX (`scripts/make_ocr_masks.sh`); published mean F1 0.450 |
 | ADCD-Net on AIForge-Doc v1 | Phase 1 | Dhruv | Needs a loader and OCR masks; first measure of AI-made edits |
 | Page-image wrapper in `src/forgelens/signals/image/` | Phase 1 | Dhruv | Runs ADCD-Net on any single page image; needed in Phase 3 |
 | ADCD-Net on rendered synthetic statement pages | Phase 1 | Both | Especially the reprinted and rasterised forgeries, where all PDF signals abstain |
@@ -104,7 +103,7 @@ Renew the DGX allocation at least 4 days before each 20-day period ends; a new f
 - ADCD-Net Doc Protocol evaluation script (`scripts/eval_adcdnet.py`) with pre-flight checks, resume, per-image CSVs and provenance.
 - Automatic backups to a private Hugging Face repository (`scripts/backup.py`, `scripts/with_backup.sh`) and GPU picking for the shared DGX (`scripts/free_gpus.sh`).
 - ADCD-Net in-domain results reproduced on the DGX (below).
-- OCR masks for the four cross-domain sets started on the DGX CPUs (`scripts/make_ocr_masks.sh`).
+- OCR masks for the four cross-domain sets made on the DGX CPUs overnight (`scripts/make_ocr_masks.sh`, 8,638 masks, no failures).
 
 **Results / numbers:**
 
@@ -119,12 +118,24 @@ ADCD-Net, released checkpoint, Doc Protocol, 12 Nov 2026, one A100 (`experiments
 
 No image failed. Code `0ba4786`, ADCD-Net `169d04d`, checkpoint sha256 `8e98674c0415…`.
 
+Cross-domain sets, 13 Nov 2026, same checkpoint, OCR masks made with `scripts/make_ocr_masks.sh` (`experiments/results/adcdnet_dgx-cross/summary.md`):
+
+| Set | Images | F1 | 95% CI | Published |
+| --- | ---: | ---: | --- | ---: |
+| T-SROIE | 1,579 | 0.623 | 0.606–0.640 | 0.623 |
+| OSTF | 3,046 | 0.441 | 0.428–0.453 | 0.441 |
+| Tampered-IC13 | 589 | 0.579 | 0.551–0.607 | 0.579 |
+| RealTextManipulation | 3,444 | 0.158 | 0.149–0.168 | 0.159 |
+| Mean (cross-domain) | | 0.450 | | 0.450 |
+
+All seven Doc Protocol scores now match the paper (overall mean 0.588). No image failed. Code `7a75d98`.
+
 **Blockers:** None. To ask the DocTamper authors whether fine-tuning on DocTamper together with our own data is allowed under "no integration with other datasets".
 
 **Next week:**
 
 - Wahid: draft the consent form and collection log and start collecting real statements; send Dr. Gopinath an update; email the DocTamper authors about the licence question.
-- Dhruv: evaluate the cross-domain sets once their OCR masks are done; run ADCD-Net on AIForge-Doc; start the page-image wrapper.
+- Dhruv: run ADCD-Net on AIForge-Doc; start the page-image wrapper.
 
 **Guide feedback:** To be added.
 
