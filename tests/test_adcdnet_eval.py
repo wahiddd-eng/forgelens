@@ -316,3 +316,48 @@ def test_worker_processes_read_the_lmdb(fake_setup):
     (a, _), (b, _) = (next(iter(loader)) for loader in loaders)
     assert torch.equal(a[0], b[0]) and torch.equal(a[3], b[3])
 
+
+
+# ---------------------------------------------------------------- AIForge-Doc
+
+def test_aiforge_sets_are_known_and_have_no_published_score():
+    assert adcdnet.resolve_datasets(["aiforge"]) == ["AIForge_test", "AIForge_authentic"]
+    assert adcdnet.resolve_datasets(["all"]) == list(adcdnet.DOC_PROTOCOL)  # unchanged
+    script = _script()
+    row = script.summary_row("AIForge_test", [PixelCounts(5, 10, 10)], 0, None, [0.2])
+    assert row["published_f1"] is None and row["delta"] is None and row["f1"] > 0
+    assert "| AIForge | 1 | 0 |" in script.markdown({"AIForge_test": row}, {}, False, {})
+
+
+def test_authentic_sets_report_false_alarms_not_f1():
+    script = _script()
+    counts = [PixelCounts(0, 0, 0), PixelCounts(0, 500, 0), PixelCounts(0, 5, 0)]
+    row = script.summary_row("AIForge_authentic", counts, 0, None, [0.0, 0.05, 0.0005])
+    assert row["f1"] is None and row["pixel_f1"] is None
+    assert row["flagged"] == pytest.approx(1 / 3)  # only the image with 5% predicted
+    assert "| AIForge-authentic | 3 | 0 | – | – | – | – | 0.333 |" in script.markdown(
+        {"AIForge_authentic": row}, {}, False, {})
+
+
+def test_prepare_aiforge_links_images_and_makes_empty_masks(tmp_path):
+    cv2 = pytest.importorskip("cv2")
+    np = pytest.importorskip("numpy")
+    spec = importlib.util.spec_from_file_location("prepare_aiforge",
+                                                  REPO / "scripts" / "prepare_aiforge.py")
+    prep = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(prep)
+    test = tmp_path / "AIForge-Doc-v1" / "TestingSet"
+    for sub in ("images", "masks", "authentic"):
+        (test / sub).mkdir(parents=True)
+    for name in ("000000001.png", "000000002.png"):
+        cv2.imwrite(str(test / "images" / name), np.full((20, 30, 3), 200, np.uint8))
+    cv2.imwrite(str(test / "masks" / "000000001.png"), np.full((20, 30), 255, np.uint8))
+    cv2.imwrite(str(test / "authentic" / "cord_00010.png"), np.full((24, 32, 3), 9, np.uint8))
+    out = tmp_path / "cutted"
+    counts = prep.prepare(tmp_path / "AIForge-Doc-v1", out)
+    assert counts == {"forged": 1, "forged_without_mask": 1, "authentic": 1,
+                      "authentic_unreadable": 0}
+    assert (out / "AIForge_test" / "images" / "000000001.png").is_symlink()
+    blank = cv2.imread(str(out / "AIForge_authentic" / "masks" / "cord_00010.png"), 0)
+    assert blank.shape == (24, 32) and blank.max() == 0
+    assert prep.prepare(tmp_path / "AIForge-Doc-v1", out) == counts  # safe to run again

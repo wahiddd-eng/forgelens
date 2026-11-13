@@ -28,11 +28,17 @@ DOCTAMPER_SETS = ("FCD", "SCD", "TestingSet")
 CROSS_DOMAIN_SETS = ("T-SROIE_test", "OSTF_test", "Tampered-IC13_test",
                      "RealTextManipulation_test")
 DOC_PROTOCOL = DOCTAMPER_SETS + CROSS_DOMAIN_SETS
+# Other sets in the same layout as the cross-domain ones (made by scripts/prepare_aiforge.py).
+# They have no published ADCD-Net score. The authentic set has no tampered pixels, so only its
+# false-alarm figures mean anything.
+EXTRA_SETS = ("AIForge_test", "AIForge_authentic")
+KNOWN_SETS = DOC_PROTOCOL + EXTRA_SETS
 
 # Short names used in the paper's Table 1.
 SHORT_NAMES = {"FCD": "FCD", "SCD": "SCD", "TestingSet": "Test", "T-SROIE_test": "T-SROIE",
                "OSTF_test": "OSTF", "Tampered-IC13_test": "TPIC-13",
-               "RealTextManipulation_test": "RTM"}
+               "RealTextManipulation_test": "RTM", "AIForge_test": "AIForge",
+               "AIForge_authentic": "AIForge-authentic"}
 
 # ADCD-Net's published per-image F1 (ICCV 2025, Table 1; upstream README, fig/docpro.png).
 PUBLISHED_F1 = {"FCD": 0.803, "SCD": 0.718, "TestingSet": 0.791, "T-SROIE_test": 0.623,
@@ -51,11 +57,11 @@ UPSTREAM_ALBUMENTATIONS = "2.0.8"
 def resolve_datasets(names: list[str]) -> list[str]:
     """Map user-facing names (``FCD``, ``Test``, ``RTM``, ``in-domain``, ``all``…) to
     upstream dataset names, keeping the Doc Protocol order and dropping duplicates."""
-    lookup = {n.lower(): n for n in DOC_PROTOCOL}
+    lookup = {n.lower(): n for n in KNOWN_SETS}
     lookup.update({s.lower(): n for n, s in SHORT_NAMES.items()})
     lookup.update({n.lower().removesuffix("_test"): n for n in CROSS_DOMAIN_SETS})
     groups = {"all": DOC_PROTOCOL, "in-domain": DOCTAMPER_SETS,
-              "cross-domain": CROSS_DOMAIN_SETS}
+              "cross-domain": CROSS_DOMAIN_SETS, "aiforge": EXTRA_SETS}
     chosen: set[str] = set()
     for name in names:
         key = name.strip().lower()
@@ -65,8 +71,9 @@ def resolve_datasets(names: list[str]) -> list[str]:
             chosen.add(lookup[key])
         else:
             raise ValueError(f"unknown dataset {name!r}; choose from "
-                             f"{', '.join(SHORT_NAMES.values())}, in-domain, cross-domain, all")
-    return [n for n in DOC_PROTOCOL if n in chosen]
+                             f"{', '.join(SHORT_NAMES.values())}, in-domain, cross-domain, "
+                             "all, aiforge")
+    return [n for n in KNOWN_SETS if n in chosen]
 
 
 @dataclass

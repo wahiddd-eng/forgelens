@@ -15,3 +15,4 @@ Command-line entry points. Each one's `--help` and module docstring give the det
 | `backup.py`, `with_backup.sh` | Periodic incremental backups of results, logs and checkpoints off the DGX |
 | `download_data.sh` | Download the Phase 1 datasets and checkpoints into `~/forgelens-data` |
 | `make_ocr_masks.sh` | OCR masks and path lists for the four cross-domain test sets (PaddleOCR, own environment) |
+| `prepare_aiforge.py` | Lay out the AIForge-Doc test split (forged and authentic) for ADCD-Net |

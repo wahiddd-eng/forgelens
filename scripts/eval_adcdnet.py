@@ -47,7 +47,7 @@ REPO = Path(__file__).resolve().parents[1]
 FIELDS = ["dataset", "image", "height", "width", "tp", "pred", "gt", "precision", "recall",
           "f1", "iou", "error"]
 SUMMARY_FIELDS = ["dataset", "short", "n", "n_failed", "n_empty_gt", "f1", "f1_ci_low",
-                  "f1_ci_high", "published_f1", "delta", "precision", "recall", "iou",
+                  "f1_ci_high", "published_f1", "delta", "flagged", "precision", "recall", "iou",
                   "pixel_f1", "pixel_iou", "seconds"]
 
 
@@ -209,25 +209,38 @@ def evaluate_dataset(name: str, model, args, csv_path: Path) -> float:
     return time.time() - start
 
 
-def read_counts(csv_path: Path) -> tuple[list[PixelCounts], int]:
-    counts, failed = [], 0
+FLAG_AREA = 0.01  # an image counts as flagged when over 1% of its pixels are predicted tampered
+
+
+def read_counts(csv_path: Path) -> tuple[list[PixelCounts], int, list[float]]:
+    """Pixel counts, number of failed images, and each image's predicted-tampered fraction."""
+    counts, failed, areas = [], 0, []
     with open(csv_path, newline="") as f:
         for row in csv.DictReader(f):
             if row["error"]:
                 failed += 1
             else:
                 counts.append(PixelCounts(int(row["tp"]), int(row["pred"]), int(row["gt"])))
-    return counts, failed
+                areas.append(int(row["pred"]) / max(1, int(row["height"]) * int(row["width"])))
+    return counts, failed, areas
 
 
 # ---------------------------------------------------------------- reporting
 
-def summary_row(name: str, counts: list[PixelCounts], failed: int, seconds: float | None) -> dict:
+def summary_row(name: str, counts: list[PixelCounts], failed: int, seconds: float | None,
+                areas: list[float] | None = None) -> dict:
+    """``flagged`` is the share of images with over 1% of pixels predicted tampered: the
+    detection rate on forged sets and the false-alarm rate on authentic ones."""
     s = summarise(counts)
-    published = adcdnet.PUBLISHED_F1[name]
+    if counts and s["n_empty_gt"] == len(counts):  # authentic images: F1 is undefined
+        for key in ("f1", "f1_ci_low", "f1_ci_high", "precision", "recall", "iou", "pixel_f1",
+                    "pixel_iou"):
+            s[key] = None
+    published = adcdnet.PUBLISHED_F1.get(name)
+    flagged = (sum(a > FLAG_AREA for a in areas) / len(areas)) if areas else None
     return {"dataset": name, "short": adcdnet.SHORT_NAMES[name], "n_failed": failed,
-            "published_f1": published,
-            "delta": None if s["f1"] is None else s["f1"] - published,
+            "published_f1": published, "flagged": flagged,
+            "delta": None if s["f1"] is None or published is None else s["f1"] - published,
             "seconds": None if seconds is None else round(seconds, 1), **s}
 
 
@@ -249,24 +262,25 @@ def _fmt(value) -> str:
 
 
 def markdown(rows: dict[str, dict], avgs: dict, partial: bool, run: dict) -> str:
-    lines = ["# ADCD-Net Doc Protocol reproduction", ""]
+    lines = ["# ADCD-Net evaluation", ""]
     if partial:
         lines += ["**Smoke test on a subset (`--limit`): not comparable with the paper.**", ""]
     lines += [("Per-image F1 of the tampered class, as in ADCD-Net (ICCV 2025) Table 1. "
-               "CI: 95% interval of the mean."), "",
-              "| Set | Images | Failed | F1 | 95% CI | Published | Δ | Pixel F1 | IoU |",
-              "| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: |"]
+               "CI: 95% interval of the mean. Flagged: share of images with over 1% of "
+               "pixels predicted tampered (false alarms on authentic sets)."), "",
+              "| Set | Images | Failed | F1 | 95% CI | Published | Δ | Flagged | Pixel F1 | IoU |",
+              "| --- | ---: | ---: | ---: | --- | ---: | ---: | ---: | ---: | ---: |"]
     for r in rows.values():
         ci = (f"{r['f1_ci_low']:.3f}–{r['f1_ci_high']:.3f}" if r["f1"] is not None else "–")
         delta = "–" if r["delta"] is None else f"{r['delta']:+.3f}"
         lines.append(f"| {r['short']} | {r['n']} | {r['n_failed']} | {_fmt(r['f1'])} | {ci} | "
-                     f"{r['published_f1']:.3f} | {delta} | {_fmt(r['pixel_f1'])} | "
-                     f"{_fmt(r['iou'])} |")
+                     f"{_fmt(r['published_f1'])} | {delta} | {_fmt(r.get('flagged'))} | "
+                     f"{_fmt(r['pixel_f1'])} | {_fmt(r['iou'])} |")
     labels = {"in_domain": "Avg. in-domain", "cross_domain": "Avg. cross-domain",
               "all": "Avg. all"}
     for group, a in avgs.items():
         lines.append(f"| {labels[group]} | | | {a['f1']:.3f} | | {a['published_f1']:.3f} | "
-                     f"{a['delta']:+.3f} | | |")
+                     f"{a['delta']:+.3f} | | | |")
     env = run.get("environment", {})
     dirty = " (with uncommitted changes)" if run.get("git_dirty") else ""
     lines += ["", (f"Code {run.get('git_commit')}{dirty}, ADCD-Net {run.get('upstream_commit')}, "
@@ -341,8 +355,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{adcdnet.SHORT_NAMES[name]}: reusing {csv_path.name}")
         else:
             seconds = evaluate_dataset(name, model, args, csv_path)
-        counts, failed = read_counts(csv_path)
-        rows[name] = summary_row(name, counts, failed, seconds)
+        counts, failed, areas = read_counts(csv_path)
+        rows[name] = summary_row(name, counts, failed, seconds, areas)
         if failed:
             print(f"Warning: {failed} {adcdnet.SHORT_NAMES[name]} images failed to load; "
                   f"see the error column of {csv_path.name}", file=sys.stderr)
