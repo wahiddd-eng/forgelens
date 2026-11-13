@@ -16,3 +16,5 @@ Command-line entry points. Each one's `--help` and module docstring give the det
 | `download_data.sh` | Download the Phase 1 datasets and checkpoints into `~/forgelens-data` |
 | `make_ocr_masks.sh` | OCR masks and path lists for the four cross-domain test sets (PaddleOCR, own environment) |
 | `prepare_aiforge.py` | Lay out the AIForge-Doc test split (forged and authentic) for ADCD-Net |
+| `make_synthetic_set.sh` | Build the v4 synthetic statement set in one folder, after checking PDFs can be rendered |
+| `eval_adcdnet_pages.py` | ADCD-Net on rendered statement pages: detection AUC and localisation F1 |

@@ -29,8 +29,7 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 
 | Item | Phase | Owner | Notes |
 | --- | --- | --- | --- |
-| Page-image wrapper in `src/forgelens/signals/image/` | Phase 1 | Dhruv | Runs ADCD-Net on any single page image; needed in Phase 3 |
-| ADCD-Net on rendered synthetic statement pages | Phase 1 | Both | Especially the reprinted and rasterised forgeries, where all PDF signals abstain |
+| ADCD-Net on rendered synthetic statement pages | Phase 1 | Both | Page wrapper and evaluation written (`signals/image/pages.py`, `scripts/eval_adcdnet_pages.py`, 13 Nov); run on the DGX after building the set with `scripts/make_synthetic_set.sh` |
 | Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Ask the DocTamper authors first whether training alongside our data counts as "integration with other datasets"; use their mask thresholds 8 and 160 |
 | Consent form and collection log for real statements | Phase 2 | Wahid | Target 100 statements (minimum 50) from at least 8 banks; kept only on local encrypted storage |
 | PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Optional now that the DGX is set up; for debugging at home |
