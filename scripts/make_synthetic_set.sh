@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build the v4 synthetic statement set (the README's "Reproduce the results" commands) into
 # one folder, checking first that this machine can render PDFs. Safe to run again: finished
-# steps are skipped.
+# steps are skipped, and a step interrupted part-way is redone.
 #
 #   bash scripts/make_synthetic_set.sh                      # into ~/forgelens-data/synthetic_v4
 #   bash scripts/make_synthetic_set.sh /path/to/folder
@@ -36,25 +36,27 @@ fc-list 2>/dev/null | grep -qiE "liberation|carlito|dejavu" \
     || echo "  ! none of the expected fonts (Liberation, Carlito, DejaVu): pages render with others"
 
 step() { echo; echo "==> $*"; }
-done_if() { [[ -n "$(find "$1" -name '*.pdf' -print -quit 2>/dev/null)" ]]; }
+# A step counts as done only when it finished: its folder gets a .complete marker afterwards.
+# An interrupted step (lost connection, reboot) is redone from scratch.
+run_step() {  # run_step <folder> <command...>
+    local dir=$1; shift
+    if [[ -f $dir/.complete ]]; then echo "  already there"; return 0; fi
+    rm -rf "$dir"
+    "$@" && touch "$dir/.complete" || { echo "  ! this step failed; run the script again"; return 1; }
+}
 
 step "genuine statements (10 banks x 30)"
-done_if "$D/genuine" && echo "  already there" || \
-    "$PY" "$REPO/scripts/generate_statements.py" --bank all --count 30 --seed 2000 --out "$D/genuine"
+run_step "$D/genuine" "$PY" "$REPO/scripts/generate_statements.py" --bank all --count 30 --seed 2000 --out "$D/genuine" || exit 1
 step "PDF-edit forgeries"
-done_if "$D/forged/pdf_edit" && echo "  already there" || \
-    "$PY" "$REPO/scripts/forge_pdf_edits.py" --genuine "$D/genuine" --out "$D/forged/pdf_edit" --masks
+run_step "$D/forged/pdf_edit" "$PY" "$REPO/scripts/forge_pdf_edits.py" --genuine "$D/genuine" --out "$D/forged/pdf_edit" --masks || exit 1
 step "rebuilt forgeries"
-done_if "$D/forged/rebuild" && echo "  already there" || \
-    "$PY" "$REPO/scripts/forge_rebuild.py" --genuine "$D/genuine" --out "$D/forged/rebuild" --masks
+run_step "$D/forged/rebuild" "$PY" "$REPO/scripts/forge_rebuild.py" --genuine "$D/genuine" --out "$D/forged/rebuild" --masks || exit 1
 methods=(raster)
 (( GS )) && methods=(reprint raster)
 for m in "${methods[@]}"; do
     step "$m laundering"
-    done_if "$D/genuine_$m" && echo "  genuine_$m already there" || \
-        "$PY" "$REPO/scripts/launder_pdfs.py" --input "$D/genuine" --out "$D/genuine_$m" --method "$m"
-    done_if "$D/forged_$m" && echo "  forged_$m already there" || \
-        "$PY" "$REPO/scripts/launder_pdfs.py" --input "$D/forged" --out "$D/forged_$m" --method "$m" --masks
+    run_step "$D/genuine_$m" "$PY" "$REPO/scripts/launder_pdfs.py" --input "$D/genuine" --out "$D/genuine_$m" --method "$m" || exit 1
+    run_step "$D/forged_$m" "$PY" "$REPO/scripts/launder_pdfs.py" --input "$D/forged" --out "$D/forged_$m" --method "$m" --masks || exit 1
 done
 
 step "done"
