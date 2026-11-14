@@ -361,3 +361,21 @@ def test_prepare_aiforge_links_images_and_makes_empty_masks(tmp_path):
     blank = cv2.imread(str(out / "AIForge_authentic" / "masks" / "cord_00010.png"), 0)
     assert blank.shape == (24, 32) and blank.max() == 0
     assert prep.prepare(tmp_path / "AIForge-Doc-v1", out) == counts  # safe to run again
+
+
+def test_page_pipeline_check_runs(fake_setup, tmp_path):
+    _, paths = fake_setup
+    script = Path(__file__).resolve().parents[1] / "scripts" / "check_adcdnet_pages.py"
+    spec = importlib.util.spec_from_file_location("check_adcdnet_pages", script)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    config = tmp_path / "c.yaml"
+    config.write_text(f"ckpt: {paths.ckpt}\ndocres: {paths.docres}\n"
+                      f"doctamper_root: {paths.doctamper_root}\n")
+    out = tmp_path / "check.json"
+    assert module.main(["--config", str(config), "--set", "FCD", "--limit", "2", "--device",
+                        "cpu", "--batch-size", "1", "--out", str(out)]) == 0
+    summary = json.loads(out.read_text())
+    assert summary["images"] == 2 and summary["missing_ocr"] == 0
+    assert set(summary["f1"]) == {"whole", "tiles", "tiles+ink"}
+    assert all(s["n"] == 2 for s in summary["f1"].values())
