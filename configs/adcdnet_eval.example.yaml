@@ -1,0 +1,14 @@
+# Copy to configs/adcdnet_eval.yaml (git-ignored) and set the paths for your machine.
+# Every key is an option of scripts/eval_adcdnet.py; options on the command line win.
+
+ckpt: ~/forgelens-data/adcdnet/ADCDNet.pth          # from the ADCD-Net Google Drive archive
+docres: ~/forgelens-data/adcdnet/docres.pkl
+doctamper_root: ~/forgelens-data/DocTamper           # DocTamperV1/ and exp_data/{qt_table.pk,pks/}
+ocr_root: ~/forgelens-data/adcdnet/DocTamperOCR      # <set>/char_seg/*.pkl
+pkl_dir: ~/forgelens-data/cutted_datasets_fakes/path_pkl  # from upstream build_path_pkl.py
+
+datasets: [all]          # or e.g. [FCD, SCD, Test] while the cross-domain sets are not ready
+device: cuda
+precision: fp16
+batch_size: 4            # 8 fits a 40 GB A100; lower it if you run out of GPU memory
+workers: 4

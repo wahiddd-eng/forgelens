@@ -10,10 +10,10 @@
 
 | Phase | Dates | Owner | Status |
 | --- | --- | --- | --- |
-| Phase 0 — Setup and 0th review | 4–15 Nov 2026 | Both | In progress |
-| Phase 1 — Base model reproduction (ADCD-Net) | 16 Nov – 20 Dec 2026 | Dhruv | Not started |
-| Phase 2 — Dataset generation | 16 Nov 2026 – 10 Jan 2027 | Wahid | Not started |
-| Phase 3 — Signal modules | 1–31 Jan 2027 | Both | Not started |
+| Phase 0 — Setup and 0th review | 4–15 Nov 2026 | Both | Done (0th review held by 14 Nov 2026) |
+| Phase 1 — Base model reproduction (ADCD-Net) | 16 Nov – 20 Dec 2026 | Dhruv | In progress (started early, 12 Nov): all seven Doc Protocol results reproduced (13 Nov); statement pages tested (14 Nov); first fine-tuning run started (14 Nov) |
+| Phase 2 — Dataset generation | 16 Nov 2026 – 10 Jan 2027 | Wahid | In progress (started early): generator with 10 bank layouts; PDF-edit, rebuild, spliced and AI-inpainted forgeries; held-out test set script |
+| Phase 3 — Signal modules | 1–31 Jan 2027 | Both | In progress (started early): financial, PDF-structure and template signals measured |
 | Phase 4 — Fusion and evaluation | 1–28 Feb 2027 | Both | Not started |
 | Phase 5 — Dashboard | 15 Feb – 15 Mar 2027 | Dhruv | Not started |
 | Phase 6 — Paper (submit by 31 Mar 2027) | 1–31 Mar 2027 | Wahid | Not started |
@@ -29,11 +29,9 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 
 | Item | Phase | Owner | Notes |
 | --- | --- | --- | --- |
-| Single-GPU ADCD-Net config (`gpus = '0'`, reduced `val_bs`) | Phase 1 | Dhruv | Keep upstream `cfg.py` untouched; override from our own config |
-| ADCD-Net evaluation script saving CSV results to `experiments/results/` | Phase 1 | Dhruv | Doc Protocol: TestingSet, FCD, SCD + T-SROIE, Tampered-IC13, RTM, OSTF |
-| Page-image wrapper in `src/forgelens/signals/image/` | Phase 1 | Dhruv | Runs ADCD-Net on any single page image; needed in Phase 3 |
-| PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Upstream pins PyTorch 2.3.0+cu121, which does not support RTX 50-series GPUs |
-| Evaluate with the released checkpoint, do not retrain | Phase 1 | Dhruv | Upstream training used 4× RTX 4090 for ~27 hours |
+| Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Joint training with DocTamper confirmed allowed by its authors (13 Nov), weights may be released; use their mask thresholds 8 and 160 |
+| Consent form and collection log for real statements | Phase 2 | Wahid | Target 100 statements (minimum 50) from at least 8 banks; kept only on local encrypted storage |
+| PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Optional now that the DGX is set up; for debugging at home |
 
 ---
 
@@ -43,14 +41,17 @@ Passwords are shared privately between team members and are **never** written in
 
 | Dataset | Source | Requested | Status | Licence / terms |
 | --- | --- | --- | --- | --- |
-| DocTamper | [qcf-568/DocTamper](https://github.com/qcf-568/DocTamper) | 4 Nov 2026 (email from SRM account) | Granted 4 Nov 2026 | Non-commercial only; no redistribution; no integration with other datasets |
+| DocTamper | [qcf-568/DocTamper](https://github.com/qcf-568/DocTamper) | 4 Nov 2026 (email from SRM account) | Granted 4 Nov 2026 | Non-commercial only; no redistribution; no DocTamper samples in any released dataset (joint training and releasing trained weights confirmed allowed by the authors, 13 Nov 2026) |
 | TFR benchmark | [qcf-568/TextShield](https://github.com/qcf-568/TextShield) | 4 Nov 2026 (email) | Granted 4 Nov 2026 | Same terms as DocTamper |
-| AIForge-Doc v1 | [Scam-AI/AIForge-Doc-v1](https://huggingface.co/datasets/Scam-AI/AIForge-Doc-v1) | 4 Nov 2026 (Hugging Face form) | Form submitted | CC BY-NC-SA 4.0 (non-commercial) |
+| AIForge-Doc v1 | [Scam-AI/AIForge-Doc-v1](https://huggingface.co/datasets/Scam-AI/AIForge-Doc-v1) | 4 Nov 2026 (Hugging Face form) | Granted 5 Nov 2026; downloaded to the DGX 12 Nov (9.4 GB) | CC BY-NC-SA 4.0 (non-commercial) |
+| Doc Protocol cross-domain sets | [Jason37437/Doc-Protocol-Data](https://huggingface.co/datasets/Jason37437/Doc-Protocol-Data) | Public | Downloaded to the DGX 12 Nov | Terms of each source dataset |
 | Omni-273k, MIML, OSTF, DanceText | qcf-568 repositories | Offered by the authors | Passwords received; not yet needed | Same terms as DocTamper |
+
+DocTamper was downloaded to the DGX on 12 Nov from the Kaggle copy (`dinmkeljiame/doctamper`, all four LMDB splits, 23 GB). The authors' terms above still apply to it, whatever licence the Kaggle page shows.
 
 **Rules that follow from these licences:**
 
-- Files from these datasets stay in `data/external/` (git-ignored) and are never uploaded or shared.
+- Files from these datasets stay in `data/external/` or `~/forgelens-data/` on the DGX (never in git) and are never uploaded or shared.
 - They may be used for research training and evaluation in this project and the paper, **not** in the startup product.
 - The public ForgeLens benchmark must not contain any images from these datasets.
 
@@ -60,6 +61,18 @@ Passwords are shared privately between team members and are **never** written in
 - The unzipped data is in `.mdb` (LMDB) files. Visualise samples with `python vizlmdb.py --input DocTamperV1-FCD --i 0` ([vizlmdb.py](https://github.com/qcf-568/DocTamper/blob/main/vizlmdb.py)).
 - Reuse the data loader in lines 43–107 of [models/eval_dtd.py](https://github.com/qcf-568/DocTamper/blob/main/models/eval_dtd.py).
 - MIML is for training only; mix it 1:1 with tamperCOCO and use cross-entropy loss with `ignore_index=100` (mask thresholds 8 and 160).
+
+---
+
+## Compute
+
+| Resource | Details | Status |
+| --- | --- | --- |
+| SRMIST DGX A100 (Centre for AI) | Account `srmist32` at 172.16.0.32, campus Wi-Fi from one registered laptop. Up to 2 A100 40 GB GPUs, whichever are free; 500 GB; about 400 GPU-hours, 16 Nov 2026 – 15 Feb 2027 | Approved 11 Nov 2026; environment set up 12 Nov (`docs/dgx.md`) |
+| Backups | Results, logs and checkpoints sent every 30 min to a private Hugging Face repository (`scripts/backup.py`) | Working since 12 Nov |
+| Home PC | RTX 5060 Ti 16 GB, in Kashmir | Optional; needs PyTorch 2.7+ |
+
+Renew the DGX allocation at least 4 days before each 20-day period ends; a new form is needed after 3 months. The DGX keeps no backups and reboots weekly.
 
 ---
 
@@ -73,6 +86,83 @@ Passwords are shared privately between team members and are **never** written in
 ---
 
 ## Weekly log
+
+## Week 2 · 11 Nov – 17 Nov 2026
+
+**Phase:** Phase 0 — Setup and 0th review (done); Phases 1–3 started early
+
+**Done:**
+
+- Engineering review of the repository (`docs/reviews/2026-11-04-engineering-review.md`) and all its fixes; rule-based signal results re-run as v4 (`experiments/results/README.md`).
+- DGX A100 GPU request form submitted with Dr. Gopinath's details; approved 11 Nov 2026 (up to 2 GPUs, whichever are free).
+- DGX environment built without sudo (`scripts/setup_dgx.sh`): Python 3.10.14, PyTorch 2.3.0 + CUDA 12.1, jpeg2dct with a bundled libjpeg-turbo.
+- Phase 1 data downloaded to the DGX (`scripts/download_data.sh`): DocTamper (4 splits), ADCD-Net checkpoint, DocRes checkpoint and OCR masks, the four cross-domain sets, AIForge-Doc v1.
+- ADCD-Net Doc Protocol evaluation script (`scripts/eval_adcdnet.py`) with pre-flight checks, resume, per-image CSVs and provenance.
+- Automatic backups to a private Hugging Face repository (`scripts/backup.py`, `scripts/with_backup.sh`) and GPU picking for the shared DGX (`scripts/free_gpus.sh`).
+- ADCD-Net in-domain results reproduced on the DGX (below).
+- OCR masks for the four cross-domain sets made on the DGX CPUs overnight (`scripts/make_ocr_masks.sh`, 8,638 masks, no failures).
+- Page-image wrapper for ADCD-Net (`src/forgelens/signals/image/pages.py`, `scripts/eval_adcdnet_pages.py`) and an overnight GPU queue; v4 synthetic set built on the DGX.
+- Image-level forgeries (`scripts/forge_image_edits.py`: spliced values, and values redrawn by an AI inpainting model) and an ADCD-Net fine-tuning script (`scripts/train_adcdnet.py`: upstream's objective, statement crops mixed with DocTamper, validation on held-out statements and DocTamper FCD); two-GPU overnight queue (`scripts/queue_image_forgeries.sh`).
+
+**Results / numbers:**
+
+ADCD-Net, released checkpoint, Doc Protocol, 12 Nov 2026, one A100 (`experiments/results/adcdnet_dgx.md`). Per-image F1, 95% CI of the mean:
+
+| Set | Images | F1 | 95% CI | Published |
+| --- | ---: | ---: | --- | ---: |
+| FCD | 2,000 | 0.803 | 0.791–0.815 | 0.803 |
+| SCD | 18,000 | 0.718 | 0.714–0.722 | 0.718 |
+| TestingSet | 30,000 | 0.791 | 0.787–0.794 | 0.791 |
+| Mean (in-domain) | | 0.771 | | 0.771 |
+
+No image failed. Code `0ba4786`, ADCD-Net `169d04d`, checkpoint sha256 `8e98674c0415…`.
+
+Cross-domain sets, 13 Nov 2026, same checkpoint, OCR masks made with `scripts/make_ocr_masks.sh` (`experiments/results/adcdnet_dgx-cross.md`):
+
+| Set | Images | F1 | 95% CI | Published |
+| --- | ---: | ---: | --- | ---: |
+| T-SROIE | 1,579 | 0.623 | 0.606–0.640 | 0.623 |
+| OSTF | 3,046 | 0.441 | 0.428–0.453 | 0.441 |
+| Tampered-IC13 | 589 | 0.579 | 0.551–0.607 | 0.579 |
+| RealTextManipulation | 3,444 | 0.158 | 0.149–0.168 | 0.159 |
+| Mean (cross-domain) | | 0.450 | | 0.450 |
+
+All seven Doc Protocol scores now match the paper (overall mean 0.588). No image failed. Code `7a75d98`.
+
+ADCD-Net on AI-made edits, 13 Nov 2026, same checkpoint, AIForge-Doc v1 test split (`experiments/results/adcdnet_dgx-aiforge.md`). No published score exists:
+
+| Set | Images | F1 | 95% CI | Flagged (>1% of pixels) |
+| --- | ---: | ---: | --- | ---: |
+| AIForge-Doc, AI-inpainted | 812 | 0.176 | 0.154–0.197 | 12.1% |
+| AIForge-Doc, authentic originals | 812 | – | – | 2.7% (false alarms) |
+
+The base model mostly misses diffusion inpainting: F1 0.176 against 0.771 on DocTamper, close to its weakest Doc Protocol set (RTM, 0.158).
+
+ADCD-Net on whole statement pages, 14 Nov 2026, same checkpoint, v4 synthetic statements built on the DGX (`experiments/results/adcdnet_pages_v4.md`, overnight queue on one A100, about 10 GPU-hours for all three resolutions). AUC of forged against genuine statements, peak score:
+
+| Laundering | Forgery | 100 DPI | 150 DPI | 200 DPI |
+| --- | --- | ---: | ---: | ---: |
+| none | PDF edit | 0.495 | 0.501 | 0.503 |
+| none | rebuild | 0.528 | 0.490 | 0.537 |
+| raster | PDF edit | 0.498 | 0.503 | 0.500 |
+| raster | rebuild | 0.523 | 0.504 | 0.471 |
+
+Chance level throughout: pixel forensics trained on DocTamper see nothing in clean digital forgeries, which leave no local pixel traces. It supports building on document-level signals (PDF structure, fonts, arithmetic) and means the fine-tuned image model must be trained on forgeries that leave pixel traces. A check on 500 DocTamper images (`scripts/check_adcdnet_pages.py`) gives the same F1 through upstream's evaluation (0.940), our page pipeline with ink-blob OCR masks (0.940), and 2 x 2 mosaics that make tiles cross image boundaries (0.932), so the pipeline is not the cause.
+
+Image-level forgeries and the first fine-tuning run, 14 Nov 2026 (`experiments/results/adcdnet_ft1.md`). The released model is also at chance on spliced (AUC 0.529) and AI-inpainted (0.487) statements. After 10,000 steps of fine-tuning (ft1, one A100, 4 h 40 min) it reaches, on held-out statements, AUC 0.999 and F1 0.88, flags 0.02% of a genuine page (from 5%), and keeps FCD F1 at 0.78 (from 0.80). Validation shares the generator, banks and forgery methods with training, so the held-out test set and an unseen-bank run come next.
+
+**0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
+
+**Blockers:** None. The DocTamper authors answered on 13 Nov: training on DocTamper together with our own synthetic data is allowed (their "integration" ban means putting DocTamper samples into a released dataset), and the resulting model weights may be released publicly, provided no DocTamper images are redistributed or included in any released dataset.
+
+**Next week:**
+
+- Wahid: draft the consent form and collection log and start collecting real statements; send Dr. Gopinath an update.
+- Dhruv: start the page-image wrapper; add TFR to the download script and evaluate it.
+
+**Guide feedback:** To be added.
+
+---
 
 ## Week 1 · 4 Nov – 10 Nov 2026
 

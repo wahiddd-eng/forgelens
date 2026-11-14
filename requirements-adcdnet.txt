@@ -1,0 +1,22 @@
+# Packages the official ADCD-Net code needs for evaluation (scripts/eval_adcdnet.py).
+# Install PyTorch first, with the CUDA build for your GPU:
+#   A100 / RTX 4090: torch==2.3.0 torchvision==0.18.0 (CUDA 12.1), as upstream pins
+#   RTX 50-series:   torch>=2.7 with CUDA 12.8+
+# For a machine without internet (the DGX), download wheels elsewhere with
+#   pip download -r requirements-adcdnet.txt --platform manylinux2014_x86_64 \
+#       --python-version 3.10 --only-binary=:all: -d wheels/
+# jpeg2dct has no wheels: it is compiled on the target machine and needs a C++ compiler and
+# the libjpeg headers (Ubuntu: sudo apt install build-essential libjpeg-dev). On the DGX,
+# ask the Centre for AI staff for these. Build it after installing numpy<2.
+albumentations==2.0.8
+numpy<2
+opencv-python-headless==4.10.0.84
+efficientnet_pytorch==0.7.1
+einops
+lmdb
+six
+pillow
+tqdm
+pyyaml
+huggingface_hub  # dataset downloads and scripts/backup.py
+jpeg2dct

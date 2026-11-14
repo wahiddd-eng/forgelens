@@ -90,6 +90,30 @@ Run the evaluation again on `genuine_reprint`/`forged_reprint` and `genuine_rast
 template profiles on the same machine: they depend on the installed fonts.
 `experiments/results/README.md` lists every result set and which ones are superseded.
 
+### ADCD-Net base model (Phase 1)
+
+`scripts/eval_adcdnet.py` runs the official ADCD-Net code (`third_party/ADCD-Net`,
+unedited) with the released checkpoint on the seven Doc Protocol test sets and compares
+the per-image F1 with the published table. Its packages are in `requirements-adcdnet.txt`
+(install PyTorch first; `jpeg2dct` is compiled on install and needs `libjpeg-dev`). Copy `configs/adcdnet_eval.example.yaml` to
+`configs/adcdnet_eval.yaml`, set the paths, then:
+
+```bash
+git submodule update --init
+python scripts/eval_adcdnet.py --config configs/adcdnet_eval.yaml --tag dgx --check
+python scripts/eval_adcdnet.py --config configs/adcdnet_eval.yaml --tag smoke --limit 20
+python scripts/eval_adcdnet.py --config configs/adcdnet_eval.yaml --tag dgx --resume
+```
+
+On the college DGX A100, `scripts/setup_dgx.sh` builds the whole environment without sudo;
+see `docs/dgx.md` for access, the first login and the rules.
+
+`--check` verifies packages, checkpoints, the data layout, OCR masks and GPU support in
+seconds. Results go to `experiments/results/adcdnet_<tag>/`: a CSV per test set (one row
+per image), and `summary.md`/`.json` with the published scores beside ours and the code,
+package, GPU and checkpoint versions. `--resume` skips the sets already finished, so a run
+interrupted by a reboot loses at most one set.
+
 ## Tests
 
 ```bash
