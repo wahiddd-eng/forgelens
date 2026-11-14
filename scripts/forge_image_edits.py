@@ -55,8 +55,10 @@ def parse_args(argv=None):
                    help="save before/after pictures of the first N forgeries in <out>/preview")
     g = p.add_argument_group("inpainting")
     g.add_argument("--model", default=DEFAULT_MODEL, help="diffusers inpainting model")
-    g.add_argument("--strength", type=float, nargs="+", default=[0.6, 0.8, 1.0],
-                   help="chosen per forgery from these (1.0 regenerates the value entirely)")
+    g.add_argument("--strength", type=float, nargs="+", default=[0.45, 0.6, 0.75],
+                   help="chosen per forgery from these. 1.0 regenerates the value entirely; at "
+                        "SDXL's text skill that gives garbled digits or invented badges, so the "
+                        "default keeps the typed value and adds the model's texture")
     g.add_argument("--steps", type=int, default=30)
     g.add_argument("--device", default="cuda")
     return p.parse_args(argv)
