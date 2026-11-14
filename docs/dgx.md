@@ -125,6 +125,46 @@ PDFs and anything under `data/` or `real*` folders. Get everything back with
 `python scripts/backup.py restore --dest $FORGELENS_BACKUP --to ~/restored`. Log:
 `~/forgelens_backup.log`.
 
+## Image forgeries and fine-tuning
+
+The released ADCD-Net cannot see PDF edits or rebuilds (`experiments/results/adcdnet_pages_v4.md`),
+so it is fine-tuned on forgeries that change pixels: spliced values and AI-inpainted values
+(`scripts/forge_image_edits.py`), compared with the rasterised genuine statements.
+
+Once, in the `forgelens` venv:
+
+```bash
+pip install -r requirements-inpaint.txt "numpy<2"
+```
+
+Spliced forgeries (CPU, a few minutes):
+
+```bash
+D=~/forgelens-data/synthetic_v4
+python scripts/forge_image_edits.py --genuine $D/genuine --out $D/forged_image/splice --method splice
+```
+
+Inpainting smoke test (one GPU; the first run downloads the model, about 7 GB, into
+`~/.cache/huggingface`). Look at the pictures in `$D/forged_image/inpaint/preview/` before
+the long run (copy them to the Mac with `scp`):
+
+```bash
+G=$(bash scripts/free_gpus.sh 1 --wait) && CUDA_VISIBLE_DEVICES=$G python scripts/forge_image_edits.py \
+    --genuine $D/genuine --out $D/forged_image/inpaint --method inpaint --limit 4 --preview 4
+```
+
+Then the two-lane overnight queue (rest of the inpainting split over two GPUs, the released
+model evaluated on the image forgeries, and a fine-tuning run):
+
+```bash
+bash scripts/queue_image_forgeries.sh 2>&1 | tee ~/night.log
+```
+
+Training runs go to `experiments/checkpoints/train_<tag>/` (backed up); the rendered pages
+it trains on go to `~/forgelens-data/page_cache/` (not backed up). Validation numbers are in
+`log.jsonl` there: `val_f1` and `val_auc` on held-out statements, `fcd_f1` on DocTamper FCD
+(to see that the model keeps what it knew).
+
 ## Rules that affect planning
 
 - Allocations last 20 days; request renewal at least 4 days before expiry. A new form is

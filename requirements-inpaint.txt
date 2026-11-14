@@ -1,0 +1,6 @@
+# AI-inpainted forgeries (scripts/forge_image_edits.py --method inpaint), on top of
+# requirements-adcdnet.txt. Versions that work with PyTorch 2.3 (the DGX).
+diffusers==0.31.0
+transformers==4.46.3
+accelerate==1.1.1
+safetensors>=0.4

@@ -103,6 +103,7 @@ Renew the DGX allocation at least 4 days before each 20-day period ends; a new f
 - ADCD-Net in-domain results reproduced on the DGX (below).
 - OCR masks for the four cross-domain sets made on the DGX CPUs overnight (`scripts/make_ocr_masks.sh`, 8,638 masks, no failures).
 - Page-image wrapper for ADCD-Net (`src/forgelens/signals/image/pages.py`, `scripts/eval_adcdnet_pages.py`) and an overnight GPU queue; v4 synthetic set built on the DGX.
+- Image-level forgeries (`scripts/forge_image_edits.py`: spliced values, and values redrawn by an AI inpainting model) and an ADCD-Net fine-tuning script (`scripts/train_adcdnet.py`: upstream's objective, statement crops mixed with DocTamper, validation on held-out statements and DocTamper FCD); two-GPU overnight queue (`scripts/queue_image_forgeries.sh`).
 
 **Results / numbers:**
 

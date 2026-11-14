@@ -130,6 +130,24 @@ class PageDetector:
         self.amp = self.device.type == "cuda" and precision == "fp16"
         self.batch = batch
 
+    @classmethod
+    def from_model(cls, model, device: str = "cuda", precision: str = "fp16",
+                   batch: int = 16) -> PageDetector:
+        """Wrap a model that is already built and configured (e.g. one being trained)."""
+        import cfg
+        import torch
+        from ds import img_totsr, load_qt, mask_totsr, multi_jpeg, pad_collate  # upstream
+
+        self = cls.__new__(cls)
+        self.model, self.info = model, {}
+        self._img_totsr, self._mask_totsr = img_totsr, mask_totsr
+        self._multi_jpeg, self._pad_collate = multi_jpeg, pad_collate
+        self._qt = load_qt(cfg.qt_path)[100]
+        self.device = torch.device(device)
+        self.amp = self.device.type == "cuda" and precision == "fp16"
+        self.batch = batch
+        return self
+
     def _item(self, tile_rgb: np.ndarray, tile_ocr: np.ndarray) -> dict:
         from copy import deepcopy
 
