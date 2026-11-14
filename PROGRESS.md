@@ -138,7 +138,7 @@ ADCD-Net on AI-made edits, 13 Nov 2026, same checkpoint, AIForge-Doc v1 test spl
 
 The base model mostly misses diffusion inpainting: F1 0.176 against 0.771 on DocTamper, close to its weakest Doc Protocol set (RTM, 0.158).
 
-ADCD-Net on whole statement pages, 14 Nov 2026, same checkpoint, v4 synthetic statements built on the DGX (`experiments/results/adcdnet_pages_v4.md`, overnight queue on one A100, about 7 GPU-hours with 200 DPI). AUC of forged against genuine statements, peak score:
+ADCD-Net on whole statement pages, 14 Nov 2026, same checkpoint, v4 synthetic statements built on the DGX (`experiments/results/adcdnet_pages_v4.md`, overnight queue on one A100, about 10 GPU-hours for all three resolutions). AUC of forged against genuine statements, peak score:
 
 | Laundering | Forgery | 150 DPI | 100 DPI |
 | --- | --- | ---: | ---: |
