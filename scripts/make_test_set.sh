@@ -12,7 +12,8 @@
 # Makes, from COUNT (default 20) new statements per bank (seeds from SEED, default 5000;
 # the training set uses 2000-2029 and the templates 9000-9011):
 #   genuine/, forged/{pdf_edit,rebuild}/, genuine_raster/, forged_raster/,
-#   forged_image/splice/, forged_image/inpaint/ (needs a GPU; waits for a free one).
+#   forged_image/splice/, forged_image/inpaint/ (needs a GPU: the one in CUDA_VISIBLE_DEVICES,
+#   or it waits for a free one).
 # The folder is marked with .heldout, and train_adcdnet.py refuses to train on it.
 # Safe to run again: finished steps are skipped, an interrupted step is redone, and the
 # inpainting continues where it stopped.
@@ -58,7 +59,7 @@ step "AI-inpainted forgeries (waits for a free GPU)"
 if [[ -f $D/forged_image/inpaint/.complete ]]; then
     echo "  already there"
 else
-    G=$(bash "$REPO/scripts/free_gpus.sh" 1 --wait) || exit 1
+    G=${CUDA_VISIBLE_DEVICES:-$(bash "$REPO/scripts/free_gpus.sh" 1 --wait)} || exit 1
     echo "  on GPU $G"
     CUDA_VISIBLE_DEVICES=$G "$PY" "$REPO/scripts/forge_image_edits.py" --genuine "$D/genuine" \
         --out "$D/forged_image/inpaint" --method inpaint --seed 1 --preview 6 \
