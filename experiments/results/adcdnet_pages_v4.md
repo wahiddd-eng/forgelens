@@ -57,5 +57,20 @@ forgeries need the document-level signals (PDF structure, fonts, arithmetic, lay
 pixel forensics need training on forgeries that do leave pixel traces (AI inpainting, pasted
 crops, print-and-scan).
 
-Before relying on this, `scripts/check_adcdnet_pages.py` checks that the tiling and the
-ink-blob OCR masks reproduce ADCD-Net's DocTamper scores; its result is recorded below once run.
+## Pipeline check
+
+`scripts/check_adcdnet_pages.py` on the first 500 DocTamper TestingSet images, compressed once
+at quality 100 (14 Nov 2026, same checkpoint):
+
+| Pipeline | F1 | 95% CI |
+| --- | ---: | --- |
+| Whole image, DocTamper's character boxes (upstream evaluation) | 0.940 | 0.928–0.952 |
+| Page pipeline (tiles), DocTamper's character boxes | 0.940 | 0.928–0.952 |
+| Page pipeline (tiles), ink-blob OCR mask | 0.940 | 0.928–0.952 |
+
+The ink-blob OCR mask loses nothing against DocTamper's own character boxes, and the page
+pipeline reproduces upstream. So the chance-level scores on statements are not caused by the
+OCR stand-in. The first two rows are identical because these images fit in one tile; a 2 x 2
+mosaic test that makes tiles cross image boundaries was added afterwards and is recorded here
+once run. (0.940 is not comparable with the Doc Protocol's 0.791: that is the whole set, compressed
+with the protocol's recorded JPEG qualities.)

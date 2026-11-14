@@ -147,7 +147,7 @@ ADCD-Net on whole statement pages, 14 Nov 2026, same checkpoint, v4 synthetic st
 | raster | PDF edit | 0.498 | 0.503 | 0.500 |
 | raster | rebuild | 0.523 | 0.504 | 0.471 |
 
-Chance level throughout: pixel forensics trained on DocTamper see nothing in clean digital forgeries, which leave no local pixel traces. It supports building on document-level signals (PDF structure, fonts, arithmetic) and means the fine-tuned image model must be trained on forgeries that leave pixel traces. A check that the page pipeline reproduces the DocTamper scores (`scripts/check_adcdnet_pages.py`) is still to be run.
+Chance level throughout: pixel forensics trained on DocTamper see nothing in clean digital forgeries, which leave no local pixel traces. It supports building on document-level signals (PDF structure, fonts, arithmetic) and means the fine-tuned image model must be trained on forgeries that leave pixel traces. A check on 500 DocTamper images (`scripts/check_adcdnet_pages.py`) gives the same F1 (0.940) through upstream's evaluation, our page pipeline and our ink-blob OCR masks, so the pipeline is not the cause.
 
 **Blockers:** None. The DocTamper authors answered on 13 Nov: training on DocTamper together with our own synthetic data is allowed (their "integration" ban means putting DocTamper samples into a released dataset), and the resulting model weights may be released publicly, provided no DocTamper images are redistributed or included in any released dataset.
 

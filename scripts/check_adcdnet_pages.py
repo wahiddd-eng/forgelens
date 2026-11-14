@@ -11,8 +11,13 @@ the first ``--limit`` DocTamper images of a set three ways and reports the mean 
 * ``tiles``: the page pipeline (tiles, averaging) with DocTamper's character boxes.
 * ``tiles+ink``: the page pipeline exactly as the statement evaluation runs it.
 
-``tiles`` close to ``whole`` means the tiling is right; ``tiles+ink`` close to ``tiles`` means
-the ink-blob OCR mask is a fair stand-in.
+* ``mosaic`` and ``mosaic+ink``: four consecutive images stitched 2 x 2 into one page, run
+  through the page pipeline, and the prediction cut back into the four images. DocTamper
+  images are usually no larger than one tile, so this is what makes tiles cross image
+  boundaries the way they cross a statement page.
+
+``tiles`` and ``mosaic`` close to ``whole`` mean the tiling is right; the ``+ink`` rows close to
+their partners mean the ink-blob OCR mask is a fair stand-in.
 
     python scripts/check_adcdnet_pages.py --config configs/adcdnet_eval.yaml --set TestingSet
 """
@@ -49,6 +54,29 @@ def counts(prob, gt) -> PixelCounts:
     return PixelCounts(int((pred & (gt == 1)).sum()), int(pred.sum()), int((gt == 1).sum()))
 
 
+def mosaic(det, group, ocr_mask):
+    """Stitch four (rgb, gt, ocr) images 2 x 2 on a white page, predict, cut back."""
+    import numpy as np
+
+    ch = max(g[1].shape[0] for g in group)
+    cw = max(g[1].shape[1] for g in group)
+    page = np.full((2 * ch, 2 * cw, 3), 255, np.uint8)
+    ocr = np.zeros((2 * ch, 2 * cw), np.uint8)
+    cells = []
+    for k, (rgb, gt, o) in enumerate(group):
+        y, x = (k // 2) * ch, (k % 2) * cw
+        h, w = gt.shape
+        page[y:y + h, x:x + w] = rgb
+        ocr[y:y + h, x:x + w] = o
+        cells.append((y, x, gt))
+    out = []
+    for name, mask in (("mosaic", ocr), ("mosaic+ink", ocr_mask(page))):
+        prob = det.predict(page, mask).prob
+        out.append((name, [counts(prob[y:y + gt.shape[0], x:x + gt.shape[1]], gt)
+                           for y, x, gt in cells]))
+    return out
+
+
 def main(argv=None) -> int:
     args = parse_args(argv)
     import lmdb
@@ -71,8 +99,10 @@ def main(argv=None) -> int:
     with env.begin() as txn:
         n = min(args.limit, int(txn.get(b"num-samples")))
     ocr_dir = paths.ocr_dir(args.set)
-    results = {"whole": [], "tiles": [], "tiles+ink": []}
+    results = {"whole": [], "tiles": [], "tiles+ink": [], "mosaic": [], "mosaic+ink": []}
     missing_ocr = 0
+    group: list[tuple] = []  # (rgb, gt, ocr) waiting to be stitched
+    sizes = set()
     for i in tqdm(range(n), unit="img"):
         with env.begin() as txn:
             img, gt = load_data(i, txn)
@@ -95,14 +125,23 @@ def main(argv=None) -> int:
         results["whole"].append(counts(whole, gt))
         results["tiles"].append(counts(det.predict(rgb, upstream_ocr).prob, gt))
         results["tiles+ink"].append(counts(det.predict(rgb, ocr_mask(rgb)).prob, gt))
+        sizes.add((h, w))
+        group.append((rgb, gt, upstream_ocr))
+        if len(group) == 4:
+            for name, prob_of in mosaic(det, group, ocr_mask):
+                results[name].extend(prob_of)
+            group = []
 
     summary = {"set": args.set, "images": n, "missing_ocr": missing_ocr,
+               "image_sizes": sorted({f"{h}x{w}" for h, w in sizes}),
                "f1": {k: summarise(v) for k, v in results.items()}}
     print(f"\nDocTamper {args.set}, first {n} images, compressed once at QF 100"
           f"{f', {missing_ocr} without character boxes' if missing_ocr else ''}:")
-    print(f"  {'pipeline':<10} {'F1':>6}  95% CI")
+    print(f"  image sizes: {', '.join(summary['image_sizes'][:5])}"
+          f"{' …' if len(summary['image_sizes']) > 5 else ''}")
+    print(f"  {'pipeline':<10} {'images':>6} {'F1':>6}  95% CI")
     for k, s in summary["f1"].items():
-        print(f"  {k:<10} {s['f1']:6.3f}  {s['f1_ci_low']:.3f}-{s['f1_ci_high']:.3f}")
+        print(f"  {k:<10} {s['n']:>6} {s['f1']:6.3f}  {s['f1_ci_low']:.3f}-{s['f1_ci_high']:.3f}")
     if args.out:
         args.out.write_text(json.dumps(summary, indent=2))
     return 0

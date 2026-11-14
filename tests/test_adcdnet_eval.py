@@ -369,13 +369,15 @@ def test_page_pipeline_check_runs(fake_setup, tmp_path):
     spec = importlib.util.spec_from_file_location("check_adcdnet_pages", script)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
+    dt = tmp_path / "dt"
+    _make_doctamper(dt, "SCD", 4)  # the shared fixture's FCD has a broken image
+    (dt / "exp_data" / "qt_table.pk").write_bytes(paths.qt_path.read_bytes())
     config = tmp_path / "c.yaml"
-    config.write_text(f"ckpt: {paths.ckpt}\ndocres: {paths.docres}\n"
-                      f"doctamper_root: {paths.doctamper_root}\n")
+    config.write_text(f"ckpt: {paths.ckpt}\ndocres: {paths.docres}\ndoctamper_root: {dt}\n")
     out = tmp_path / "check.json"
-    assert module.main(["--config", str(config), "--set", "FCD", "--limit", "2", "--device",
+    assert module.main(["--config", str(config), "--set", "SCD", "--limit", "4", "--device",
                         "cpu", "--batch-size", "1", "--out", str(out)]) == 0
     summary = json.loads(out.read_text())
-    assert summary["images"] == 2 and summary["missing_ocr"] == 0
-    assert set(summary["f1"]) == {"whole", "tiles", "tiles+ink"}
-    assert all(s["n"] == 2 for s in summary["f1"].values())
+    assert summary["images"] == 4 and summary["missing_ocr"] == 0
+    assert set(summary["f1"]) == {"whole", "tiles", "tiles+ink", "mosaic", "mosaic+ink"}
+    assert all(s["n"] == 4 for s in summary["f1"].values())
