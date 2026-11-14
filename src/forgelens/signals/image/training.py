@@ -36,6 +36,16 @@ def _source(record: dict) -> str:
     return sid.split("__")[0]
 
 
+def bank_of(entry: dict) -> str:
+    """The bank of a cached page (its source id is ``<bank_id>_<seed>``)."""
+    return entry.get("bank") or entry["source"].rsplit("_", 1)[0]
+
+
+def held_out(path: Path) -> bool:
+    """True inside a folder marked with a ``.heldout`` file (a test set: never trained on)."""
+    return any((d / ".heldout").exists() for d in Path(path).resolve().parents)
+
+
 def build_page_cache(folders: list[Path], cache: Path, dpi: int = 150,
                      val_fraction: float = 0.1, log=print) -> list[dict]:
     """Render the statements under ``folders`` into ``cache``; return the page index.
@@ -48,6 +58,9 @@ def build_page_cache(folders: list[Path], cache: Path, dpi: int = 150,
     index_file = cache / "index.json"
     index = {e["key"]: e for e in json.loads(index_file.read_text())} \
         if index_file.exists() else {}
+    for f in folders:
+        if held_out(Path(f).expanduser() / "x") or any(Path(f).expanduser().rglob(".heldout")):
+            raise ValueError(f"{f} is (or contains) a held-out test set: never train on it")
     files = sorted({p for f in folders for p in Path(f).expanduser().rglob("*.json")})
     added = 0
     for n, json_path in enumerate(files, 1):
@@ -76,7 +89,7 @@ def build_page_cache(folders: list[Path], cache: Path, dpi: int = 150,
                           "label": record["label"], "edited": bool(mask.any()),
                           "method": record.get("forgery", {}).get("method", "genuine"),
                           "laundering": record.get("laundering", {}).get("method", "none"),
-                          "source": source}
+                          "source": source, "bank": record.get("bank_id", "")}
             added += 1
         if n % 200 == 0:
             log(f"  cache: {n}/{len(files)} label files read, {added} pages added")

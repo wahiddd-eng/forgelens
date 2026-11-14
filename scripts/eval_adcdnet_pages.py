@@ -50,6 +50,8 @@ def parse_args(argv=None):
     p.add_argument("--data", type=Path, nargs="+", required=True,
                    help="folders with statement PDFs and their JSON labels")
     p.add_argument("--tag", required=True)
+    p.add_argument("--ckpt", type=Path, help="evaluate this checkpoint instead of the config's "
+                   "(e.g. a fine-tuned one from train_adcdnet.py)")
     p.add_argument("--out", type=Path, default=REPO / "experiments" / "results")
     p.add_argument("--dpi", type=int, default=150, help="page rendering resolution")
     p.add_argument("--device", default="cuda")
@@ -70,7 +72,8 @@ def load_paths(args) -> adcdnet.Paths:
     import yaml
 
     cfg = {k.replace("-", "_"): v for k, v in yaml.safe_load(args.config.read_text()).items()}
-    return adcdnet.Paths(upstream=args.upstream, ckpt=cfg["ckpt"], docres=cfg["docres"],
+    return adcdnet.Paths(upstream=args.upstream, ckpt=args.ckpt or cfg["ckpt"],
+                         docres=cfg["docres"],
                          doctamper_root=cfg.get("doctamper_root"), qt_path=cfg.get("qt_path"))
 
 
@@ -172,7 +175,9 @@ def markdown(lines: list[dict], run: dict, partial: bool) -> str:
     md = ["# ADCD-Net on rendered bank-statement pages", ""]
     if partial:
         md += ["**Smoke test on a subset (`--limit`).**", ""]
-    intro = (f"Released checkpoint, pages rendered at {run['settings']['dpi']} DPI and cut "
+    which = (f"Fine-tuned checkpoint `{Path(run['ckpt']).parent.parent.name}/"
+             f"{Path(run['ckpt']).name}`" if run.get("fine_tuned") else "Released checkpoint")
+    intro = (f"{which}, pages rendered at {run['settings']['dpi']} DPI and cut "
              "into 512 px tiles. Detection compares forged statements with genuine ones of the "
              "same laundering setting: ROC AUC, and the share of forgeries caught when 5% / 1% "
              "of genuine statements may be flagged. Peak: mean of the 500 most suspicious "
@@ -238,7 +243,8 @@ def main(argv=None) -> int:
     detector = PageDetector(paths, args.device, args.precision, args.batch_size)
     run = run_info(vars(args))
     run.update(upstream_commit=adcdnet.upstream_commit(paths.upstream),
-               ckpt_sha256=adcdnet.sha256(paths.ckpt), environment=adcdnet.environment(),
+               ckpt=str(paths.ckpt), ckpt_sha256=adcdnet.sha256(paths.ckpt),
+               fine_tuned=args.ckpt is not None, environment=adcdnet.environment(),
                settings={"dpi": args.dpi, "tile": 512, "stride": 384,
                          "precision": args.precision, "limit": args.limit})
 

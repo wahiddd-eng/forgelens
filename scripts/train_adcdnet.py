@@ -45,6 +45,9 @@ def parse_args(argv=None):
                    help="runs go in <out>/train_<tag> (the default is backed up by backup.py)")
     p.add_argument("--cache", type=Path, default=Path("~/forgelens-data/page_cache"),
                    help="rendered pages, shared by runs (kept out of the backups)")
+    p.add_argument("--exclude-banks", nargs="+", default=[], metavar="BANK",
+                   help="leave these banks out of training and validation (to test them as "
+                        "unseen layouts later)")
     p.add_argument("--val-fraction", type=float, default=0.2,
                    help="share of source statements held out for validation")
     p.add_argument("--dpi", type=int, default=150)
@@ -144,6 +147,9 @@ def main(argv=None) -> int:
         dist.barrier()
     index = json.loads((cache / "index.json").read_text())
     # Every page in the cache is used; --data only decides what gets added to it.
+    if args.exclude_banks:
+        index = [e for e in index if training.bank_of(e) not in set(args.exclude_banks)]
+        log(f"    leaving out banks: {', '.join(args.exclude_banks)}")
     train_pages = [e for e in index if e["split"] == "train"]
     val_pages = [e for e in index if e["split"] == "val"]
     log(f"    train: {len(train_pages)} pages ({sum(e['edited'] for e in train_pages)} edited); "

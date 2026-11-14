@@ -165,6 +165,12 @@ it trains on go to `~/forgelens-data/page_cache/` (not backed up). Validation nu
 `log.jsonl` there: `val_f1` and `val_auc` on held-out statements, `fcd_f1` on DocTamper FCD
 (to see that the model keeps what it knew).
 
+Final comparisons use a held-out test set of new statements that no model is trained on
+(`bash scripts/make_test_set.sh`, about an hour including the inpainting; build it on the DGX
+so its fonts match the training set). It is marked `.heldout`, and `train_adcdnet.py` refuses
+to train on it. `train_adcdnet.py --exclude-banks A B` leaves two banks out of training, to
+test them later as unseen layouts.
+
 ## Rules that affect planning
 
 - Allocations last 20 days; request renewal at least 4 days before expiry. A new form is

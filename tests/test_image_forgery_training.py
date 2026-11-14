@@ -184,3 +184,18 @@ def test_training_runs_end_to_end_on_cpu(statements, tmp_path, monkeypatch):
                                                 docres=paths.docres, doctamper_root=dt), "cpu")
     assert model is not None
     assert script.main([*args, "--resume"]) == 0  # already at the last step: nothing to do
+
+
+def test_page_cache_refuses_a_held_out_test_set(statements, tmp_path):
+    from forgelens.signals.image.training import bank_of, build_page_cache
+
+    test_set = tmp_path / "synthetic_test"
+    (test_set / "genuine").mkdir(parents=True)
+    (test_set / ".heldout").touch()
+    for folder in (test_set, test_set / "genuine"):
+        with pytest.raises(ValueError, match="held-out"):
+            build_page_cache([folder], tmp_path / "cache", dpi=30)
+    index = build_page_cache([statements / "genuine_raster"], tmp_path / "cache", dpi=30,
+                             log=lambda _: None)
+    assert index and {bank_of(e) for e in index} == {"sahyadri"}
+    assert bank_of({"source": "bayview_international_002000"}) == "bayview_international"
