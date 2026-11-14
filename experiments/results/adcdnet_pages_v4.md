@@ -30,16 +30,22 @@ edited regions, per statement (95% CI).
 
 ## 200 DPI
 
-Running at the time of writing; added when finished.
+| Laundering | Forgery | Genuine | Forged | AUC (peak) | Caught @5% | Caught @1% | AUC (area) | F1 | 95% CI |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| none | pdf_edit | 300 | 300 | 0.503 | 6% | 1% | 0.499 | 0.029 | 0.024–0.034 |
+| none | rebuild | 300 | 299 | 0.537 | 12% | 7% | 0.497 | 0.095 | 0.088–0.103 |
+| raster | pdf_edit | 300 | 300 | 0.500 | 5% | 1% | 0.500 | 0.046 | 0.039–0.052 |
+| raster | rebuild | 300 | 299 | 0.471 | 6% | 2% | 0.480 | 0.165 | 0.160–0.171 |
 
 Code a5eec02a0f1bbca3a3621a5bae06e1657002d8df, ADCD-Net 169d04d2d802c1d1e4d934c04c308c3e3f5c4e7a,
 PyTorch 2.3.0+cu121 on NVIDIA A100-SXM4-40GB; checkpoint sha256 8e98674c0415.
 
 ## Reading
 
-Every AUC is within 0.03 of 0.5 and every catch rate is at the false-alarm rate it was set
-to: the released checkpoint cannot tell our forged statements from genuine ones, at either
-resolution, before or after rasterising. The F1 values are not evidence of localisation: the
+Every AUC is between 0.47 and 0.54, and the catch rates are at or barely above the
+false-alarm rate they were set to (the best, 12% at 5% for unlaundered rebuilds at 200 DPI,
+is not repeated at other resolutions): the released checkpoint cannot tell our forged
+statements from genuine ones at any resolution, before or after rasterising. The F1 values are not evidence of localisation: the
 model marks a similar amount of genuine statements, and rebuilds score higher only because
 they change much larger regions, so random marks overlap them more.
 

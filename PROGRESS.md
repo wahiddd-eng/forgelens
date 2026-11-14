@@ -140,12 +140,12 @@ The base model mostly misses diffusion inpainting: F1 0.176 against 0.771 on Doc
 
 ADCD-Net on whole statement pages, 14 Nov 2026, same checkpoint, v4 synthetic statements built on the DGX (`experiments/results/adcdnet_pages_v4.md`, overnight queue on one A100, about 10 GPU-hours for all three resolutions). AUC of forged against genuine statements, peak score:
 
-| Laundering | Forgery | 150 DPI | 100 DPI |
-| --- | --- | ---: | ---: |
-| none | PDF edit | 0.501 | 0.495 |
-| none | rebuild | 0.490 | 0.528 |
-| raster | PDF edit | 0.503 | 0.498 |
-| raster | rebuild | 0.504 | 0.523 |
+| Laundering | Forgery | 100 DPI | 150 DPI | 200 DPI |
+| --- | --- | ---: | ---: | ---: |
+| none | PDF edit | 0.495 | 0.501 | 0.503 |
+| none | rebuild | 0.528 | 0.490 | 0.537 |
+| raster | PDF edit | 0.498 | 0.503 | 0.500 |
+| raster | rebuild | 0.523 | 0.504 | 0.471 |
 
 Chance level throughout: pixel forensics trained on DocTamper see nothing in clean digital forgeries, which leave no local pixel traces. It supports building on document-level signals (PDF structure, fonts, arithmetic) and means the fine-tuned image model must be trained on forgeries that leave pixel traces. A check that the page pipeline reproduces the DocTamper scores (`scripts/check_adcdnet_pages.py`) is still to be run.
 
