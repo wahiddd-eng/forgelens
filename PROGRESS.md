@@ -10,10 +10,10 @@
 
 | Phase | Dates | Owner | Status |
 | --- | --- | --- | --- |
-| Phase 0 — Setup and 0th review | 4–15 Nov 2026 | Both | In progress |
-| Phase 1 — Base model reproduction (ADCD-Net) | 16 Nov – 20 Dec 2026 | Dhruv | In progress (started early, 12 Nov): all seven Doc Protocol results reproduced (13 Nov) |
-| Phase 2 — Dataset generation | 16 Nov 2026 – 10 Jan 2027 | Wahid | In progress (started early): generator with 10 bank layouts, PDF-edit and rebuild forgeries |
-| Phase 3 — Signal modules | 1–31 Jan 2027 | Both | Not started |
+| Phase 0 — Setup and 0th review | 4–15 Nov 2026 | Both | Done (0th review held by 14 Nov 2026) |
+| Phase 1 — Base model reproduction (ADCD-Net) | 16 Nov – 20 Dec 2026 | Dhruv | In progress (started early, 12 Nov): all seven Doc Protocol results reproduced (13 Nov); statement pages tested (14 Nov); first fine-tuning run started (14 Nov) |
+| Phase 2 — Dataset generation | 16 Nov 2026 – 10 Jan 2027 | Wahid | In progress (started early): generator with 10 bank layouts; PDF-edit, rebuild, spliced and AI-inpainted forgeries; held-out test set script |
+| Phase 3 — Signal modules | 1–31 Jan 2027 | Both | In progress (started early): financial, PDF-structure and template signals measured |
 | Phase 4 — Fusion and evaluation | 1–28 Feb 2027 | Both | Not started |
 | Phase 5 — Dashboard | 15 Feb – 15 Mar 2027 | Dhruv | Not started |
 | Phase 6 — Paper (submit by 31 Mar 2027) | 1–31 Mar 2027 | Wahid | Not started |
@@ -29,7 +29,6 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 
 | Item | Phase | Owner | Notes |
 | --- | --- | --- | --- |
-| ADCD-Net on rendered synthetic statement pages | Phase 1 | Both | Page wrapper and evaluation written (`signals/image/pages.py`, `scripts/eval_adcdnet_pages.py`, 13 Nov); run on the DGX after building the set with `scripts/make_synthetic_set.sh` |
 | Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Joint training with DocTamper confirmed allowed by its authors (13 Nov), weights may be released; use their mask thresholds 8 and 160 |
 | Consent form and collection log for real statements | Phase 2 | Wahid | Target 100 statements (minimum 50) from at least 8 banks; kept only on local encrypted storage |
 | PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Optional now that the DGX is set up; for debugging at home |
@@ -90,7 +89,7 @@ Renew the DGX allocation at least 4 days before each 20-day period ends; a new f
 
 ## Week 2 · 11 Nov – 17 Nov 2026
 
-**Phase:** Phase 0 — Setup and 0th review; Phase 1 started early
+**Phase:** Phase 0 — Setup and 0th review (done); Phases 1–3 started early
 
 **Done:**
 
@@ -149,6 +148,8 @@ ADCD-Net on whole statement pages, 14 Nov 2026, same checkpoint, v4 synthetic st
 | raster | rebuild | 0.523 | 0.504 | 0.471 |
 
 Chance level throughout: pixel forensics trained on DocTamper see nothing in clean digital forgeries, which leave no local pixel traces. It supports building on document-level signals (PDF structure, fonts, arithmetic) and means the fine-tuned image model must be trained on forgeries that leave pixel traces. A check on 500 DocTamper images (`scripts/check_adcdnet_pages.py`) gives the same F1 through upstream's evaluation (0.940), our page pipeline with ink-blob OCR masks (0.940), and 2 x 2 mosaics that make tiles cross image boundaries (0.932), so the pipeline is not the cause.
+
+**0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 
 **Blockers:** None. The DocTamper authors answered on 13 Nov: training on DocTamper together with our own synthetic data is allowed (their "integration" ban means putting DocTamper samples into a released dataset), and the resulting model weights may be released publicly, provided no DocTamper images are redistributed or included in any released dataset.
 
