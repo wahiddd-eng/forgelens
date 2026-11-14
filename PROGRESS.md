@@ -149,6 +149,8 @@ ADCD-Net on whole statement pages, 14 Nov 2026, same checkpoint, v4 synthetic st
 
 Chance level throughout: pixel forensics trained on DocTamper see nothing in clean digital forgeries, which leave no local pixel traces. It supports building on document-level signals (PDF structure, fonts, arithmetic) and means the fine-tuned image model must be trained on forgeries that leave pixel traces. A check on 500 DocTamper images (`scripts/check_adcdnet_pages.py`) gives the same F1 through upstream's evaluation (0.940), our page pipeline with ink-blob OCR masks (0.940), and 2 x 2 mosaics that make tiles cross image boundaries (0.932), so the pipeline is not the cause.
 
+Image-level forgeries and the first fine-tuning run, 14 Nov 2026 (`experiments/results/adcdnet_ft1.md`). The released model is also at chance on spliced (AUC 0.529) and AI-inpainted (0.487) statements. After 10,000 steps of fine-tuning (ft1, one A100, 4 h 40 min) it reaches, on held-out statements, AUC 0.999 and F1 0.88, flags 0.02% of a genuine page (from 5%), and keeps FCD F1 at 0.78 (from 0.80). Validation shares the generator, banks and forgery methods with training, so the held-out test set and an unseen-bank run come next.
+
 **0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 
 **Blockers:** None. The DocTamper authors answered on 13 Nov: training on DocTamper together with our own synthetic data is allowed (their "integration" ban means putting DocTamper samples into a released dataset), and the resulting model weights may be released publicly, provided no DocTamper images are redistributed or included in any released dataset.
