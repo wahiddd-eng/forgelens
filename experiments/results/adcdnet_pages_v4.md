@@ -67,10 +67,12 @@ at quality 100 (14 Nov 2026, same checkpoint):
 | Whole image, DocTamper's character boxes (upstream evaluation) | 0.940 | 0.928–0.952 |
 | Page pipeline (tiles), DocTamper's character boxes | 0.940 | 0.928–0.952 |
 | Page pipeline (tiles), ink-blob OCR mask | 0.940 | 0.928–0.952 |
+| 2 x 2 mosaics through the page pipeline, DocTamper's character boxes | 0.931 | 0.918–0.944 |
+| 2 x 2 mosaics through the page pipeline, ink-blob OCR mask | 0.932 | 0.920–0.945 |
 
 The ink-blob OCR mask loses nothing against DocTamper's own character boxes, and the page
-pipeline reproduces upstream. So the chance-level scores on statements are not caused by the
-OCR stand-in. The first two rows are identical because these images fit in one tile; a 2 x 2
-mosaic test that makes tiles cross image boundaries was added afterwards and is recorded here
-once run. (0.940 is not comparable with the Doc Protocol's 0.791: that is the whole set, compressed
+pipeline reproduces upstream. All 500 images are 512 x 512, so the first two rows are one
+tile each; in the mosaics (1024 x 1024 pages) tiles cross image boundaries as they cross a
+statement page, and F1 drops by under 0.01, inside the confidence intervals. So neither the
+tiling nor the OCR stand-in causes the chance-level scores on statements. (0.940 is not comparable with the Doc Protocol's 0.791: that is the whole set, compressed
 with the protocol's recorded JPEG qualities.)
