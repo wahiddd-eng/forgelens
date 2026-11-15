@@ -151,6 +151,8 @@ Chance level throughout: pixel forensics trained on DocTamper see nothing in cle
 
 Image-level forgeries and the first fine-tuning run, 14 Nov 2026 (`experiments/results/adcdnet_ft1.md`). The released model is also at chance on spliced (AUC 0.529) and AI-inpainted (0.487) statements. After 10,000 steps of fine-tuning (ft1, one A100, 4 h 40 min) it reaches, on held-out statements, AUC 0.999 and F1 0.88, flags 0.02% of a genuine page (from 5%), and keeps FCD F1 at 0.78 (from 0.80). Validation shares the generator, banks and forgery methods with training, so the held-out test set and an unseen-bank run come next.
 
+ft1 on the held-out test set, 15 Nov 2026 (`experiments/results/adcdnet_ft1_test.md`): on 200 new statements AUC 0.998 (AI inpainting) and 0.993 (splice), 96% caught at 1% false alarms, against chance for the released model; PDF edits and rebuilds stay at chance (left to the PDF signals). But on AIForge-Doc F1 fell from 0.176 to 0.026 and false alarms on authentic images rose from 2.7% to 9.6%: ft1 learned our forgeries, not AI editing in general. DocTamper in-domain mean 0.750 (from 0.771). Next: more varied training forgeries.
+
 **0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 
 **Blockers:** None. The DocTamper authors answered on 13 Nov: training on DocTamper together with our own synthetic data is allowed (their "integration" ban means putting DocTamper samples into a released dataset), and the resulting model weights may be released publicly, provided no DocTamper images are redistributed or included in any released dataset.
