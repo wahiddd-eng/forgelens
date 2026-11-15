@@ -153,6 +153,8 @@ Image-level forgeries and the first fine-tuning run, 14 Nov 2026 (`experiments/r
 
 ft1 on the held-out test set, 15 Nov 2026 (`experiments/results/adcdnet_ft1_test.md`): on 200 new statements AUC 0.998 (AI inpainting) and 0.993 (splice), 96% caught at 1% false alarms, against chance for the released model; PDF edits and rebuilds stay at chance (left to the PDF signals). But on AIForge-Doc F1 fell from 0.176 to 0.026 and false alarms on authentic images rose from 2.7% to 9.6%: ft1 learned our forgeries, not AI editing in general. DocTamper in-domain mean 0.750 (from 0.771). Next: more varied training forgeries.
 
+Unseen bank layouts, 15 Nov 2026 (`experiments/results/adcdnet_unseen_banks.md`): ft2, trained without konark_urban and malabar_coastal, on those two banks reaches AUC 0.872 (AI inpainting) and 0.956 (splice), against 1.000 and 0.999 for ft1, which saw them; at 1% false alarms it catches 60% and 85% against 100% and 98%. H4 fails for this model: ten layouts are too few to learn layout-independent traces. More bank layouts in the generator are needed.
+
 **0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 
 **Blockers:** None. The DocTamper authors answered on 13 Nov: training on DocTamper together with our own synthetic data is allowed (their "integration" ban means putting DocTamper samples into a released dataset), and the resulting model weights may be released publicly, provided no DocTamper images are redistributed or included in any released dataset.
