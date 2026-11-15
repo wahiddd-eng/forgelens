@@ -3,6 +3,10 @@
 Example:
     python scripts/generate_statements.py --bank himalaya_national --count 100 --seed 0 \
         --months 3 --out data/synthetic/genuine
+
+    # 40 procedurally generated banks (gen_0000 ... gen_0039), 10 statements each
+    python scripts/generate_statements.py --bank generated --generated 0 40 --count 10 \
+        --seed 3000 --out data/synthetic/genuine_gen
 """
 
 from __future__ import annotations
@@ -24,8 +28,12 @@ from forgelens.utils import run_info
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--bank", default="himalaya_national", choices=sorted(BANKS) + ["all"],
-                        help="bank id, or 'all' to generate --count statements for every bank")
+    parser.add_argument("--bank", default="himalaya_national",
+                        help="bank id (a hand-made bank or a generated one such as gen_0007), "
+                             "'all' for every hand-made bank, or 'generated' for the range "
+                             "given by --generated")
+    parser.add_argument("--generated", type=int, nargs=2, metavar=("FIRST", "COUNT"),
+                        default=(0, 40), help="generated banks to use with --bank generated")
     parser.add_argument("--count", type=int, default=10, help="number of statements")
     parser.add_argument("--seed", type=int, default=0, help="seed of the first statement")
     parser.add_argument("--months", type=int, default=3, help="statement period in months (1-12)")
@@ -33,7 +41,16 @@ def main() -> None:
     parser.add_argument("--no-pdf", action="store_true", help="write ground-truth JSON only")
     args = parser.parse_args()
 
-    banks = list(BANKS.values()) if args.bank == "all" else [get_bank(args.bank)]
+    if args.bank == "all":
+        banks = list(BANKS.values())
+    elif args.bank == "generated":
+        first, count = args.generated
+        banks = [get_bank(f"gen_{i:04d}") for i in range(first, first + count)]
+    else:
+        try:
+            banks = [get_bank(args.bank)]
+        except KeyError as exc:
+            parser.error(str(exc))
     manifest = {"run": run_info(vars(args)), "banks": {}}
     failed = 0
     for bank in banks:

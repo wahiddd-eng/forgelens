@@ -171,6 +171,13 @@ so its fonts match the training set). It is marked `.heldout`, and `train_adcdne
 to train on it. `train_adcdnet.py --exclude-banks A B` leaves two banks out of training, to
 test them later as unseen layouts.
 
+### Unseen layouts (ft4)
+
+`bash scripts/queue_ft4.sh 2>&1 | tee ~/night4.log` builds statements of 100 generated banks
+(`src/forgelens/generator/random_banks.py`) with varied forgeries, trains ft4 on them alone,
+and tests it on the held-out test set, whose ten hand-made banks it has never seen. About
+9 hours on two GPUs.
+
 ## Rules that affect planning
 
 - Allocations last 20 days; request renewal at least 4 days before expiry. A new form is

@@ -72,11 +72,70 @@
 {% endmacro %}
 
 {% macro logo(bank, size=34) %}
+{% set shape = bank.style.get("logo", "square") %}
+{% set glyph = bank.style.get("glyph", "peak") %}
+{% if shape != "none" %}
 <svg width="{{ size }}" height="{{ size }}" viewBox="0 0 34 34" aria-hidden="true">
-  <rect width="34" height="34" rx="6" fill="{{ bank.primary_colour }}"/>
-  <path d="M4 26 L13 12 L18 19 L22 14 L30 26 Z" fill="{{ bank.accent_colour }}"/>
-  <path d="M13 12 L15.5 16 L11 16 Z" fill="#ffffff"/>
+  {% if shape == "circle" %}<circle cx="17" cy="17" r="17" fill="{{ bank.primary_colour }}"/>
+  {% elif shape == "shield" %}<path d="M3 3 H31 V17 C31 25 24 30 17 33 C10 30 3 25 3 17 Z" fill="{{ bank.primary_colour }}"/>
+  {% else %}<rect width="34" height="34" rx="6" fill="{{ bank.primary_colour }}"/>{% endif %}
+  {% if glyph == "waves" %}<path d="M5 15 Q9 11 13 15 T21 15 T29 15 V18 Q25 14 21 18 T13 18 T5 18 Z M5 22 Q9 18 13 22 T21 22 T29 22 V25 Q25 21 21 25 T13 25 T5 25 Z" fill="{{ bank.accent_colour }}"/>
+  {% elif glyph == "sun" %}<circle cx="17" cy="17" r="7" fill="{{ bank.accent_colour }}"/><circle cx="17" cy="17" r="3" fill="#ffffff"/>
+  {% elif glyph == "pillars" %}<path d="M7 11 L17 6 L27 11 Z M9 13 H12 V24 H9 Z M15.5 13 H18.5 V24 H15.5 Z M22 13 H25 V24 H22 Z M7 26 H27 V28 H7 Z" fill="{{ bank.accent_colour }}"/>
+  {% else %}<path d="M4 26 L13 12 L18 19 L22 14 L30 26 Z" fill="{{ bank.accent_colour }}"/>
+  <path d="M13 12 L15.5 16 L11 16 Z" fill="#ffffff"/>{% endif %}
 </svg>
+{% endif %}
 {% endmacro %}
 
 {% macro fictional_note(bank) %}{{ bank.name }} is a fictional bank created for the ForgeLens research dataset.{% endmacro %}
+
+{# Page-look overrides for generated banks (bank.style); hand-made banks have none. Placed
+   last in each template's <style>, so these rules win over the template's own. #}
+{% macro style_overrides(bank) %}
+{% set st = bank.style %}
+{% if st %}
+  {% if st.get("text") %}body { color: {{ st.text }}; }{% endif %}
+  {# Keep a summary above the table clear of its header, or the reader takes the summary's
+     values for table columns. #}
+  {% if bank.summary_position == "top" %}.summary, .summary-kv, .cards { margin-bottom: 16pt; }{% endif %}
+  {# Generated labels can be long: header cells wrap instead of running into the next one
+     (the templates' amount headers inherit nowrap from .num). #}
+  table.txns th, table.grid th, table.txns th.num, table.grid th.num { white-space: normal;
+    overflow-wrap: anywhere; letter-spacing: 0; }
+  {% if st.get("th") == "filled" %}
+  table.txns th, table.grid th { background: {{ bank.primary_colour }}; color: #fff; border: none; }
+  {% elif st.get("th") == "tint" %}
+  table.txns th, table.grid th { background: {{ bank.primary_colour }}22; color: {{ bank.primary_colour }}; border: none; }
+  {% elif st.get("th") == "underline" %}
+  table.txns th, table.grid th { background: none; color: {{ bank.primary_colour }}; border: none;
+    border-bottom: 1.4pt solid {{ bank.primary_colour }}; }
+  {% elif st.get("th") == "boxed" %}
+  table.txns th, table.grid th { background: #eeeeee; color: #111; border: 0.7pt solid #555; }
+  {% endif %}
+  {# Capitals are wider than the column widths allow for: let them wrap, a little smaller. #}
+  {% if st.get("uppercase_th") %}table.txns th, table.grid th { text-transform: uppercase;
+    letter-spacing: 0; font-size: 88%; white-space: normal; overflow-wrap: anywhere; }{% endif %}
+  {% if st.get("rules") == "rows" %}
+  table.txns td, table.grid td { border: none; border-bottom: 0.5pt solid #d6d9de; }
+  {% elif st.get("rules") == "grid" %}
+  table.txns td, table.grid td { border: 0.5pt solid #9a9a9a; }
+  {% elif st.get("rules") == "none" %}
+  table.txns td, table.grid td { border: none; }
+  {% elif st.get("rules") == "dotted" %}
+  table.txns td, table.grid td { border: none; border-bottom: 0.6pt dotted #9a9a9a; }
+  {% endif %}
+  {% if st.get("pad") %}table.txns td, table.grid td { padding-top: {{ st.pad }}pt; padding-bottom: {{ st.pad }}pt; }{% endif %}
+  {% if st.get("header") == "right" %}
+  .masthead, .band { flex-direction: row-reverse; } .doc-title, .band .doc { text-align: left; }
+  .head { text-align: right; }
+  {% elif st.get("header") == "center" %}
+  .masthead, .band { flex-direction: column; align-items: center; gap: 4pt; }
+  .doc-title, .band .doc { text-align: center; } .head { text-align: center; }
+  {% elif st.get("header") == "left" %}
+  .head { text-align: left; }
+  {% endif %}
+{% endif %}
+{% endmacro %}
+
+{% macro title(bank, default) %}{{ bank.style.get("title", default) }}{% endmacro %}

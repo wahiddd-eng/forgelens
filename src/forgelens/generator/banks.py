@@ -65,6 +65,9 @@ class BankProfile:
     base_font_size: float = 8.4
     branch_address: str = ""
     meta_generator: str = ""  # PDF "Creator" value; empty = the template's default
+    # Look of the page (generated banks): th, rules, pad, header, logo, glyph, title, text,
+    # uppercase_th. Empty = each template's own look, as for the hand-made banks.
+    style: dict = field(default_factory=dict)
 
     def label(self, key: str) -> str:
         return self.labels.get(key, DEFAULT_LABELS[key])
@@ -201,7 +204,12 @@ COUNTERPARTY_IFSC_PREFIXES = ("DKNB", "SVRB", "KSMB", "VNDB", "CRLB", "GNGB", "N
 
 
 def get_bank(bank_id: str) -> BankProfile:
-    """Return the profile for ``bank_id`` or raise ``KeyError`` listing valid ids."""
+    """Return the profile for ``bank_id`` (a hand-made bank, or a generated one such as
+    ``gen_0007``) or raise ``KeyError`` listing valid ids."""
+    from .random_banks import is_generated, random_bank
+
+    if is_generated(bank_id):
+        return random_bank(int(bank_id.split("_", 1)[1]))
     try:
         return BANKS[bank_id]
     except KeyError:
