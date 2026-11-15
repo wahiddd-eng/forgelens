@@ -1,6 +1,6 @@
 # Notebooks
 
-Jupyter notebooks for exploratory analysis.
+Exploratory analyses and reproducible research notebooks.
 
 ## Self-test kit for real statements
 
