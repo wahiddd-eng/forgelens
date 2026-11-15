@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 from pathlib import Path
 
 from forgelens.forgery import LAUNDER_METHODS, launder, write_masks
@@ -23,6 +24,10 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--dpi", type=int, default=150, help="raster resolution")
     parser.add_argument("--masks", action="store_true", help="rewrite masks for forged files")
+    parser.add_argument("--tag", default="", help="appended to every output name, so a second "
+                        "laundered set gets ids of its own (e.g. _mixq)")
+    parser.add_argument("--jpeg-quality", type=int, nargs="+", default=[85],
+                        help="raster JPEG quality; with several, one is chosen per file")
     args = parser.parse_args()
 
     import pymupdf
@@ -33,9 +38,11 @@ def main() -> None:
         pdf = json_path.with_suffix(".pdf")
         if not pdf.exists() or record.get("label") not in ("genuine", "forged"):
             continue
-        out_pdf = args.out / f"{record['statement_id']}__{args.method}.pdf"
+        out_pdf = args.out / f"{record['statement_id']}__{args.method}{args.tag}.pdf"
         seed = stable_seed(args.seed, record["statement_id"], args.method)
-        label = launder(pdf, record, out_pdf, method=args.method, seed=seed, dpi=args.dpi)
+        quality = random.Random(seed).choice(args.jpeg_quality)
+        label = launder(pdf, record, out_pdf, method=args.method, seed=seed, dpi=args.dpi,
+                        jpeg_quality=quality)
         if args.masks and label.get("edits"):
             with pymupdf.open(out_pdf) as doc:
                 size = (doc[0].rect.width, doc[0].rect.height)
