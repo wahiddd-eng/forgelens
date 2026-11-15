@@ -41,9 +41,11 @@ from .pdf_edit import _font_index, _plan
 METHODS = ("splice", "inpaint")
 DEFAULT_MODEL = "diffusers/stable-diffusion-xl-1.0-inpainting-0.1"
 # Open inpainting models with the same diffusers interface, for varied training forgeries.
+# (Stability AI took down stabilityai/stable-diffusion-2-inpainting; sd2-community keeps
+# an unchanged copy under the same openrail++ licence.)
 MODELS = (
     DEFAULT_MODEL,
-    "stabilityai/stable-diffusion-2-inpainting",
+    "sd2-community/stable-diffusion-2-inpainting",
     "stable-diffusion-v1-5/stable-diffusion-inpainting",
 )
 NEGATIVE = "blurry, handwriting, distorted, smudged, watermark, colourful"
