@@ -157,6 +157,8 @@ ft1 on the held-out test set, 15 Nov 2026 (`experiments/results/adcdnet_ft1_test
 
 Unseen bank layouts, 15 Nov 2026 (`experiments/results/adcdnet_unseen_banks.md`): ft2, trained without konark_urban and malabar_coastal, on those two banks reaches AUC 0.872 (AI inpainting) and 0.956 (splice), against 1.000 and 0.999 for ft1, which saw them; at 1% false alarms it catches 60% and 85% against 100% and 98%. H4 fails for this model: ten layouts are too few to learn layout-independent traces. More bank layouts in the generator are needed.
 
+ft3, varied forgeries, 15 Nov 2026 (`experiments/results/adcdnet_ft3.md`): trained on forgeries by three inpainting models and pages at JPEG quality 60–95, ft3 recovers most of ft1's loss on AIForge-Doc (F1 0.115 against 0.026; authentic false alarms 4.9% against 9.6%) and keeps 94–95% caught at 1% on new statements. Still below the released model on AIForge-Doc (0.176): more variety is needed.
+
 **0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 
 **Guide (15 Nov 2026, after the progress email):** no consent forms are needed for real statements; collect them from friends and family.
