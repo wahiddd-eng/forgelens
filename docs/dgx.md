@@ -178,6 +178,14 @@ test them later as unseen layouts.
 and tests it on the held-out test set, whose ten hand-made banks it has never seen. About
 9 hours on two GPUs.
 
+### Fusion (CPU)
+
+`bash scripts/run_fusion.sh` runs the rule-based signals on the test set and fuses them with
+each fine-tuned model's test-set scores (`experiments/results/fusion_test-<model>/`). No GPU;
+it can run beside a GPU queue. For image scores on the digital (not rasterised) test
+statements too, first run the model on them:
+`eval_adcdnet_pages.py --ckpt <best> --tag test-ft1-digital --data $T/genuine $T/forged` (GPU).
+
 ## Rules that affect planning
 
 - Allocations last 20 days; request renewal at least 4 days before expiry. A new form is

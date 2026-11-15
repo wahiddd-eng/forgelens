@@ -31,6 +31,7 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 | --- | --- | --- | --- |
 | Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Joint training with DocTamper confirmed allowed by its authors (13 Nov), weights may be released; use their mask thresholds 8 and 160 |
 | Unseen-layout run ft4: train on 100 generated banks only, test on the 10 hand-made banks (`scripts/queue_ft4.sh`) | Phase 1 | Both | Generator for any number of fictional banks added 15 Nov (`generator/random_banks.py`); run after ft3 |
+| Fusion on the held-out test set (`scripts/run_fusion.sh`, CPU) | Phase 4 | Both | Fusion module and script written 15 Nov (`fusion/fuse.py`, `scripts/fuse_signals.py`): logistic and boosting models, out-of-fold by source statement, one threshold for all inputs |
 | Consent form and collection log for real statements | Phase 2 | Wahid | Target 100 statements (minimum 50) from at least 8 banks; kept only on local encrypted storage |
 | PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Optional now that the DGX is set up; for debugging at home |
 
