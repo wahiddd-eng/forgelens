@@ -159,6 +159,8 @@ Unseen bank layouts, 15 Nov 2026 (`experiments/results/adcdnet_unseen_banks.md`)
 
 ft3, varied forgeries, 15 Nov 2026 (`experiments/results/adcdnet_ft3.md`): trained on forgeries by three inpainting models and pages at JPEG quality 60–95, ft3 recovers most of ft1's loss on AIForge-Doc (F1 0.115 against 0.026; authentic false alarms 4.9% against 9.6%) and keeps 94–95% caught at 1% on new statements. Still below the released model on AIForge-Doc (0.176): more variety is needed.
 
+Fusion on the held-out test set, 15 Nov 2026 (`experiments/results/fusion_test.md`): the four signals fused by gradient boosting catch 63% of all 1,196 forgeries at 1% false alarms, against 33% for the fine-tuned image model alone and 26% for the best rule-based signal (AUC 0.871 against 0.672 and 0.781). H1 holds on this test set. The remaining misses are almost all PDF edits and rebuilds that were then rasterised (a third of the forgeries), which leave no trace any signal sees; of the rest, fusion catches 94%.
+
 **0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 
 **Guide (15 Nov 2026, after the progress email):** no consent forms are needed for real statements; collect them from friends and family.
