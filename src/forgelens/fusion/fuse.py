@@ -123,15 +123,20 @@ def present_signals(statements: list[Statement]) -> list[str]:
     return [s for s in SINGLE if any(st.scores.get(s) is not None for st in statements)]
 
 
-def features(statements: list[Statement], with_missing: bool):
+def features(statements: list[Statement], with_missing: bool,
+             signals: list[str] | None = None, use_area: bool | None = None):
     """Feature matrix: per signal a score and a present flag (and the image's flagged area).
 
     ``with_missing``: leave absent scores as NaN (for boosting); otherwise set them to 0.5.
+    ``signals``/``use_area``: the columns to build (default: whatever these statements have);
+    a saved model passes the ones it was fitted with.
     """
     import numpy as np
 
-    signals = present_signals(statements)
-    use_area = any(st.image_area is not None for st in statements)
+    if signals is None:
+        signals = present_signals(statements)
+    if use_area is None:
+        use_area = any(st.image_area is not None for st in statements)
     rows = []
     for st in statements:
         row = []
@@ -172,6 +177,39 @@ def out_of_fold(statements: list[Statement], folds: int = 5, seed: int = 0) -> d
             model = make().fit(x[train], y[train])
             out[name][test] = model.predict_proba(x[test])[:, 1]
     return {k: v.tolist() for k, v in out.items()}
+
+
+def fit_final(statements: list[Statement], fused: dict[str, list[float]],
+              fprs: tuple[float, ...] = (0.01, 0.05), seed: int = 0) -> dict:
+    """The boosting model fitted on every statement, with the thresholds that flag ``fpr`` of
+    genuine statements, for scoring new statements (``apply_final``).
+
+    Thresholds come from the out-of-fold scores (``fused``), so they reflect how the model
+    scores statements it has not seen; the single signals' thresholds are kept too.
+    """
+    import numpy as np
+    from sklearn.ensemble import HistGradientBoostingClassifier
+
+    signals = present_signals(statements)
+    use_area = any(st.image_area is not None for st in statements)
+    x = features(statements, True, signals, use_area)
+    y = np.array([st.forged for st in statements], dtype=int)
+    model = HistGradientBoostingClassifier(max_iter=200, learning_rate=0.05,
+                                           max_leaf_nodes=15, random_state=seed).fit(x, y)
+    genuine = [i for i, st in enumerate(statements) if not st.forged]
+    thresholds = {"fused_boosting": {f: threshold_at([fused["fused_boosting"][i]
+                                                      for i in genuine], f) for f in fprs}}
+    for s in signals:
+        g = [statements[i].scores[s] for i in genuine if statements[i].scores.get(s) is not None]
+        thresholds[s] = {f: threshold_at(g, f) for f in fprs} if g else {}
+    return {"model": model, "signals": signals, "use_area": use_area,
+            "thresholds": thresholds, "trained_on": len(statements)}
+
+
+def apply_final(final: dict, statements: list[Statement]) -> list[float]:
+    """Fused scores of new statements from a model saved by ``fit_final``."""
+    x = features(statements, True, final["signals"], final["use_area"])
+    return final["model"].predict_proba(x)[:, 1].tolist()
 
 
 # ---------------------------------------------------------------- measurement

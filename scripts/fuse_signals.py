@@ -8,7 +8,8 @@
         --image experiments/results/adcdnet_pages_test-ft1/pages.csv --tag test-ft1
 
 Writes ``<out>/fusion_<tag>/``: ``statements.csv`` (every statement's scores, fused ones
-out-of-fold), ``summary.json`` and ``summary.md``.
+out-of-fold), ``summary.json``, ``summary.md``, and ``model.pkl`` (the boosting model fitted on
+all statements, with the thresholds for 1% and 5% false alarms, for ``eval_real.py``).
 """
 
 from __future__ import annotations
@@ -16,11 +17,12 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import pickle
 import sys
 from pathlib import Path
 
 from forgelens.fusion import evaluate, join, load_image, load_signals, out_of_fold
-from forgelens.fusion.fuse import FUSED, SINGLE
+from forgelens.fusion.fuse import FUSED, SINGLE, fit_final
 from forgelens.utils import run_info
 
 NAMES = {"image": "Image (ADCD-Net)", "financial": "Financial", "structure": "PDF structure",
@@ -37,6 +39,9 @@ def parse_args(argv=None):
     p.add_argument("--tag", required=True)
     p.add_argument("--out", type=Path, default=Path("experiments/results"))
     p.add_argument("--folds", type=int, default=5)
+    p.add_argument("--exclude", nargs="+", default=[], choices=SINGLE,
+                   help="leave these signals out (e.g. template, which only knows our "
+                        "fictional banks, for a model to apply to real statements)")
     return p.parse_args(argv)
 
 
@@ -78,6 +83,11 @@ def markdown(result: dict, args, missing_image: int) -> str:
 def main(argv=None) -> int:
     args = parse_args(argv)
     statements = join(load_signals(args.signals), load_image(args.image))
+    for st in statements:
+        for s in args.exclude:
+            st.scores[s] = None
+        if "image" in args.exclude:
+            st.image_area = None
     if not statements or all(st.forged for st in statements) or not any(st.forged for st in statements):
         print("Need genuine and forged statements", file=sys.stderr)
         return 1
@@ -98,6 +108,9 @@ def main(argv=None) -> int:
                         "" if st.image_area is None else st.image_area,
                         *(round(fused[f][i], 5) for f in FUSED)])
     (out / "summary.json").write_text(json.dumps(result, indent=2, default=str))
+    final = fit_final(statements, fused)
+    with open(out / "model.pkl", "wb") as fh:  # for eval_real.py
+        pickle.dump(final, fh)
     text = markdown(result, args, missing_image)
     (out / "summary.md").write_text(text)
     print(text)

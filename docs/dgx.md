@@ -186,6 +186,25 @@ it can run beside a GPU queue. For image scores on the digital (not rasterised) 
 statements too, first run the model on them:
 `eval_adcdnet_pages.py --ckpt <best> --tag test-ft1-digital --data $T/genuine $T/forged` (GPU).
 
+## Real statements
+
+Real statements may come to the DGX only for the length of one run, and are deleted by it.
+
+1. On the DGX: `mkdir -m 700 ~/real_statements`.
+2. On the Mac, rename copies of the statements `S001.pdf`, `S002.pdf`, ... (no account numbers
+   in names), write `statements.tsv` beside them (one line per file:
+   `S001.pdf<TAB>bank name<TAB>password`, password empty when there is none), and copy them over:
+   `scp S*.pdf statements.tsv srmist32@172.16.0.32:~/real_statements/`
+3. On the DGX: `bash scripts/eval_real.sh`. It refuses a folder that others can read or whose
+   name does not start with `real` (the backup skips those), saves no page pictures, writes
+   only counts, bank names and file IDs to `experiments/results/real_<date>.md`, and deletes
+   `~/real_statements` when it ends, also when it fails (`KEEP=1` keeps it, e.g. to fix a
+   password; then delete it yourself).
+4. Commit the `real_<date>.md` summary; nothing else from the run.
+
+Passwords live only in `statements.tsv`, which is deleted with the folder: keep them on your
+own device, never in the collection log or in Drive next to the files.
+
 ## Rules that affect planning
 
 - Allocations last 20 days; request renewal at least 4 days before expiry. A new form is
