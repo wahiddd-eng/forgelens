@@ -1,5 +1,9 @@
 # Notebooks
 
+Jupyter notebooks for exploratory analysis.
+
+## Self-test kit for real statements
+
 `self_test.ipynb`: for friends and family who help measure ForgeLens's false alarms on real
 bank statements without sharing them. Open it in Google Colab (File → Upload notebook, or
 from GitHub), run the cells in order: it runs ForgeLens on their own statement in their own
