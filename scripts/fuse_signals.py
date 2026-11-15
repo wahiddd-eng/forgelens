@@ -22,10 +22,11 @@ import sys
 from pathlib import Path
 
 from forgelens.fusion import evaluate, join, load_image, load_signals, out_of_fold
-from forgelens.fusion.fuse import FUSED, SINGLE, fit_final
+from forgelens.fusion.fuse import FUSED, SINGLE, fit_final, load_ocr
 from forgelens.utils import run_info
 
-NAMES = {"image": "Image (ADCD-Net)", "financial": "Financial", "structure": "PDF structure",
+NAMES = {"image": "Image (ADCD-Net)", "image_released": "Image (released)",
+         "ocr_financial": "OCR arithmetic", "financial": "Financial", "structure": "PDF structure",
          "template": "Template", "fused_logistic": "Fused (logistic)",
          "fused_boosting": "Fused (boosting)"}
 
@@ -36,6 +37,11 @@ def parse_args(argv=None):
                    help="per-file CSV(s) from eval_signals.py")
     p.add_argument("--image", type=Path, nargs="*", default=[],
                    help="pages.csv file(s) from eval_adcdnet_pages.py, all from one model")
+    p.add_argument("--released", type=Path, nargs="*", default=[],
+                   help="pages.csv of the released ADCD-Net on the same files (a second image "
+                        "signal)")
+    p.add_argument("--ocr", type=Path, nargs="*", default=[],
+                   help="CSV(s) from eval_ocr_financial.py (arithmetic read from page images)")
     p.add_argument("--tag", required=True)
     p.add_argument("--out", type=Path, default=Path("experiments/results"))
     p.add_argument("--folds", type=int, default=5)
@@ -82,7 +88,9 @@ def markdown(result: dict, args, missing_image: int) -> str:
 
 def main(argv=None) -> int:
     args = parse_args(argv)
-    statements = join(load_signals(args.signals), load_image(args.image))
+    statements = join(load_signals(args.signals), load_image(args.image),
+                      load_image(args.released) if args.released else None,
+                      load_ocr(args.ocr) if args.ocr else None)
     for st in statements:
         for s in args.exclude:
             st.scores[s] = None

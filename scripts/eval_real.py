@@ -77,7 +77,6 @@ def wilson(k: int, n: int) -> tuple[float, float]:
 def main(argv=None) -> int:
     args = parse_args(argv)
     from forgelens.fusion import Statement
-    from forgelens.fusion.fuse import apply_final
     from forgelens.reader import PasswordRequired
     from forgelens.signals.financial import check_statement
     from forgelens.signals.pdf_structure import analyze_pdf
@@ -101,6 +100,12 @@ def main(argv=None) -> int:
                               qt_path=cfg.get("qt_path"))
         detector = PageDetector(paths, args.device, "fp16" if args.device != "cpu" else "fp32")
 
+    ocr = None
+    if "ocr_financial" in final["signals"]:
+        from forgelens.signals.ocr_financial import OcrReader
+
+        ocr = OcrReader(gpu=args.device != "cpu")
+
     rows, statements = [], []
     for pdf, bank, password in files:
         row = {"id": pdf.stem, "bank": bank, "error": "", "checks": ""}
@@ -116,6 +121,11 @@ def main(argv=None) -> int:
             row["checks"] = ";".join(sorted({f.check for f in fin.findings}
                                             | {f.check for f in struct.findings}))
             row["image_only"] = struct.abstained
+            if ocr is not None:
+                from forgelens.signals.ocr_financial import check_pdf
+
+                rep = check_pdf(pdf, ocr, args.dpi, password)
+                st.scores["ocr_financial"] = None if rep.abstained else rep.score
             if detector is not None:
                 from forgelens.signals.image.pages import page_scores, render_pages
 
@@ -135,6 +145,22 @@ def main(argv=None) -> int:
         print(f"  {pdf.stem}: {'error: ' + row['error'] if row['error'] else 'done'}",
               flush=True)
 
+    summary = summarise(rows, statements, final, detector is not None)
+    summary["fusion_model"] = str(args.fusion)
+    args.summary.parent.mkdir(parents=True, exist_ok=True)
+    args.summary.with_suffix(".json").write_text(json.dumps(summary, indent=2, default=list))
+    names = [n for n in final["signals"] if n != "template"] + ["fused_boosting"]
+    args.summary.write_text(markdown(summary, names))
+    print(markdown(summary, names))
+    return 0
+
+
+def summarise(rows: list[dict], statements: list, final: dict, image_signal: bool) -> dict:
+    """False-alarm counts per signal and for the fused verdict, at the thresholds the fusion
+    model was saved with. ``rows``: id, bank, error, checks (and image_only) per statement;
+    ``statements``: their scores (``fusion.Statement``)."""
+    from forgelens.fusion.fuse import apply_final
+
     ok = [i for i, r in enumerate(rows) if not r["error"]]
     fused = apply_final(final, [statements[i] for i in ok]) if ok else []
     for i, f in zip(ok, fused, strict=True):
@@ -144,8 +170,7 @@ def main(argv=None) -> int:
                "errors": Counter(r["error"] for r in rows if r["error"]),
                "banks": Counter(r["bank"] for r in rows),
                "image_only": sum(bool(r.get("image_only")) for r in rows),
-               "image_signal": detector is not None,
-               "fusion_model": str(args.fusion), "flagged": {}, "by_bank": defaultdict(dict),
+               "image_signal": image_signal, "flagged": {}, "by_bank": defaultdict(dict),
                "checks_fired": Counter(c for r in rows for c in r["checks"].split(";") if c)}
     for fpr in (0.01, 0.05):
         for name in names:
@@ -168,15 +193,13 @@ def main(argv=None) -> int:
                     b = [i for i in assessed if rows[i]["bank"] == bank]
                     summary["by_bank"][bank][f"{fpr:g}"] = [sum(i in flagged for i in b), len(b)]
 
-    args.summary.parent.mkdir(parents=True, exist_ok=True)
-    args.summary.with_suffix(".json").write_text(json.dumps(summary, indent=2, default=list))
-    args.summary.write_text(markdown(summary, names))
-    print(markdown(summary, names))
-    return 0
+    return summary
 
 
 def markdown(s: dict, names: list[str]) -> str:
-    label = {"image": "Image (ADCD-Net)", "financial": "Financial", "structure": "PDF structure",
+    label = {"image": "Image (ADCD-Net)", "image_released": "Image (released)",
+             "ocr_financial": "OCR arithmetic", "financial": "Financial",
+             "structure": "PDF structure",
              "fused_boosting": "**ForgeLens (fused)**"}
     lines = ["# ForgeLens on real bank statements", "",
              (f"{s['statements']} genuine statements from {len(s['banks'])} banks "

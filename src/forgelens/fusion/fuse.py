@@ -32,7 +32,13 @@ from pathlib import Path
 
 PDF_SIGNALS = ("financial", "structure", "template")
 IMAGE = "image"
-SINGLE = (IMAGE, *PDF_SIGNALS)
+# The released ADCD-Net beside the fine-tuned one: better on other AI tools (AIForge-Doc),
+# worse on our statements, so fusion can learn when to trust which.
+IMAGE_RELEASED = "image_released"
+# Running balances read by OCR from the page image (signals/ocr_financial.py): the
+# arithmetic check for scans and rasterised statements, which have no text layer.
+OCR_FINANCIAL = "ocr_financial"
+SINGLE = (IMAGE, IMAGE_RELEASED, *PDF_SIGNALS, OCR_FINANCIAL)
 FUSED = ("fused_logistic", "fused_boosting")
 
 
@@ -107,13 +113,32 @@ def load_image(paths: list[Path]) -> dict[str, tuple[float, float]]:
     return best
 
 
-def join(signals: dict[str, Statement], image: dict[str, tuple[float, float]]) -> list[Statement]:
-    """Add the image scores to the statements (missing where the image model was not run)."""
+def join(signals: dict[str, Statement], image: dict[str, tuple[float, float]],
+         released: dict[str, tuple[float, float]] | None = None,
+         ocr: dict[str, float | None] | None = None) -> list[Statement]:
+    """Add the image scores (and optionally the released model's peak and the OCR
+    arithmetic score) to the statements; missing where a signal was not run."""
     for file, st in signals.items():
         peak_area = image.get(file)
         st.scores[IMAGE] = peak_area[0] if peak_area else None
         st.image_area = peak_area[1] if peak_area else None
+        if released is not None:
+            r = released.get(file)
+            st.scores[IMAGE_RELEASED] = r[0] if r else None
+        if ocr is not None:
+            st.scores[OCR_FINANCIAL] = ocr.get(file)
     return list(signals.values())
+
+
+def load_ocr(paths: list[Path]) -> dict[str, float | None]:
+    """``file -> score`` from ``scripts/eval_ocr_financial.py`` CSVs (None = abstained)."""
+    out: dict[str, float | None] = {}
+    for path in paths:
+        with open(path, newline="") as fh:
+            for row in csv.DictReader(fh):
+                name = Path(row["file"]).name
+                out[name] = None if _true(row.get("abstained")) else _float(row.get("score"))
+    return out
 
 
 # ---------------------------------------------------------------- fusion

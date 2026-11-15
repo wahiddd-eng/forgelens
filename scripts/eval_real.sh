@@ -41,12 +41,17 @@ trap cleanup EXIT
 
 # The fusion model for real statements: trained on the test set without the template signal
 # (which knows only our fictional banks), with the image model's scores.
+# Plus the OCR arithmetic signal when it was run on the test set (eval_ocr_financial.py).
 F=experiments/results/fusion_test-$MODEL-real/model.pkl
+ocr=(experiments/results/ocr_financial_test*.csv)
 if [[ ! -f $F ]]; then
     echo "==> fitting the fusion model for real statements (CPU, about a minute)"
+    extra=()
+    [[ -f ${ocr[0]} ]] && extra+=(--ocr "${ocr[@]}")
     python scripts/fuse_signals.py --signals experiments/results/signals_test_per_file.csv \
-        --image experiments/results/adcdnet_pages_test-$MODEL*/pages.csv \
-        --tag "test-$MODEL-real" --exclude template > /dev/null || die "fusion fit failed"
+        --image experiments/results/adcdnet_pages_test-$MODEL*/pages.csv "${extra[@]}" \
+        --tag "test-$MODEL-real" --exclude template image_released > /dev/null \
+        || die "fusion fit failed"
 fi
 
 CONFIG=configs/adcdnet_$MODEL.yaml

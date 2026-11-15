@@ -178,6 +178,19 @@ test them later as unseen layouts.
 and tests it on the held-out test set, whose ten hand-made banks it has never seen. About
 9 hours on two GPUs.
 
+### OCR arithmetic (GPU, about an hour)
+
+The running-balance check for rasterised statements reads the page images with EasyOCR
+(`pip install easyocr==1.7.2 "numpy<2"` once):
+
+```bash
+G=$(bash scripts/free_gpus.sh 1 --wait) && CUDA_VISIBLE_DEVICES=$G python scripts/eval_ocr_financial.py \
+    --tag test --data $T/genuine_raster $T/forged_raster $T/forged_image --resume
+```
+
+`run_fusion.sh` then adds a fusion run with it and the released ADCD-Net as extra signals
+(`fusion_test-<model>-plus`).
+
 ### Fusion (CPU)
 
 `bash scripts/run_fusion.sh` runs the rule-based signals on the test set and fuses them with

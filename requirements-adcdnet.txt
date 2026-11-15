@@ -22,3 +22,5 @@ huggingface_hub  # dataset downloads and scripts/backup.py
 jpeg2dct
 # Fusion of the signals (scripts/fuse_signals.py); 1.5.x works with numpy<2 and Python 3.10
 scikit-learn==1.5.2
+# OCR arithmetic signal (src/forgelens/signals/ocr_financial.py, scripts/eval_ocr_financial.py)
+easyocr==1.7.2

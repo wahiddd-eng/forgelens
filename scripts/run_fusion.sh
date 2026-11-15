@@ -26,4 +26,15 @@ for model in ft1 ft3 ft4; do
     echo "==> fusion with $model (${#pages[@]} image run(s))"
     python scripts/fuse_signals.py --signals $R/signals_test_per_file.csv \
         --image "${pages[@]}" --tag "test-$model"
+    # the released model as a second image signal, when it was run on the test set
+    released=("$R"/adcdnet_pages_test-released*/pages.csv)
+    ocr=("$R"/ocr_financial_test*.csv)
+    extra=()
+    [[ -f ${released[0]} ]] && extra+=(--released "${released[@]}")
+    [[ -f ${ocr[0]} ]] && extra+=(--ocr "${ocr[@]}")
+    if (( ${#extra[@]} )); then
+        echo "==> fusion with $model plus${released:+ the released model}${ocr:+ and OCR arithmetic}"
+        python scripts/fuse_signals.py --signals $R/signals_test_per_file.csv \
+            --image "${pages[@]}" "${extra[@]}" --tag "test-$model-plus"
+    fi
 done
