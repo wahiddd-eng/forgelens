@@ -101,8 +101,9 @@ def load_image(paths: list[Path]) -> dict[str, tuple[float, float]]:
                 peak, area = _float(row.get("peak")), _float(row.get("area"))
                 if peak is None:
                     continue
-                old = best.get(row["file"], (-1.0, -1.0))
-                best[row["file"]] = (max(old[0], peak), max(old[1], area or 0.0))
+                name = Path(row["file"]).name  # pages.csv records the full path
+                old = best.get(name, (-1.0, -1.0))
+                best[name] = (max(old[0], peak), max(old[1], area or 0.0))
     return best
 
 

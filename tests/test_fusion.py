@@ -73,7 +73,8 @@ def test_loading_csvs_marks_abstentions_as_missing(tmp_path):
     with open(pages, "w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["file", "page", "peak", "area", "error"])
-        w.writerows([["a__raster.pdf", 0, 0.2, 0.001, ""], ["a__raster.pdf", 1, 0.6, 0.0, ""]])
+        w.writerows([["/data/test/a__raster.pdf", 0, 0.2, 0.001, ""],  # full paths, as written
+                     ["/data/test/a__raster.pdf", 1, 0.6, 0.0, ""]])
     st = {s.file: s for s in join(load_signals([sig]), load_image([pages]))}
     assert st["a.pdf"].scores == {"financial": 0.0, "structure": 0.1, "template": None,
                                   "image": None}
