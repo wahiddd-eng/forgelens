@@ -71,8 +71,9 @@ Log in first: `hf auth login` for Hugging Face, and put a Kaggle API token in
 `~/.kaggle/kaggle.json` (`chmod 600`). Archive passwords are asked for and never saved.
 
 Copy datasets and checkpoints the same way (`rsync -av --partial --progress`, which can
-resume an interrupted copy). **Real bank statements never go on the DGX**: it is shared and
-has no backups.
+resume an interrupted copy). **Real bank statements stay off the DGX** except for one run of
+`scripts/eval_real.sh`, which deletes them (see Real statements below): it is shared and has
+no backups.
 
 ## Environment
 
