@@ -30,7 +30,6 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 | Item | Phase | Owner | Notes |
 | --- | --- | --- | --- |
 | Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Joint training with DocTamper confirmed allowed by its authors (13 Nov), weights may be released; use their mask thresholds 8 and 160 |
-| Final image model ft5: ft3 and ft4 training data together (`scripts/queue_ft5.sh`) | Phase 1 | Both | Combines what helped in ft3 (AIForge-Doc) and ft4 (unseen layouts); queued 16 Nov |
 | Fusion on the held-out test set (`scripts/run_fusion.sh`, CPU) | Phase 4 | Both | Fusion module and script written 15 Nov (`fusion/fuse.py`, `scripts/fuse_signals.py`): logistic and boosting models, out-of-fold by source statement, one threshold for all inputs |
 | Real-statement collection from friends and family | Phase 2 | Wahid, Dhruv | Guide confirmed on 15 Nov 2026 that no consent forms are needed. Target 100 statements (minimum 50) from at least 8 banks; original PDFs, unedited. Stored in a private Google Drive folder; on the DGX only for one run of `scripts/eval_real.sh`, which deletes them (rule changed 15 Nov 2026, see `docs/dgx.md`) |
 | PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Optional now that the DGX is set up; for debugging at home |
@@ -162,6 +161,10 @@ ft3, varied forgeries, 15 Nov 2026 (`experiments/results/adcdnet_ft3.md`): train
 Fusion on the held-out test set, 15 Nov 2026 (`experiments/results/fusion_test.md`): the four signals fused by gradient boosting catch 63% of all 1,196 forgeries at 1% false alarms, against 33% for the fine-tuned image model alone and 26% for the best rule-based signal (AUC 0.871 against 0.672 and 0.781). H1 holds on this test set. The remaining misses are almost all PDF edits and rebuilds that were then rasterised (a third of the forgeries), which leave no trace any signal sees; of the rest, fusion catches 94%.
 
 ft4, unseen bank layouts, 16 Nov 2026 (`experiments/results/adcdnet_ft4.md`): trained only on 100 generated fictional banks (396 statements), ft4 catches 100% (AI inpainting) and 99% (splice) at 1% false alarms on the 10 hand-made banks it never saw, against 96% for ft1, which trained on them, and 60% / 85% for ft2 on its 2 unseen banks. H4 holds: enough layout variety removes the dependence on known banks. Pixel F1 0.79 (ft1 0.71). On AIForge-Doc F1 0.076 with the fewest false alarms (1.6%), below ft3 (0.115) although both used the same varied forgeries; ft5 (`scripts/queue_ft5.sh`) trains on both sets together.
+
+ft5, 16 Nov 2026 (`experiments/results/adcdnet_ft5.md`): ft3 and ft4 data together catch 100% of image-level forgeries on the test set, like ft4, but AIForge-Doc F1 falls to 0.049 and localisation to F1 0.72. ft4 stays the image model. AIForge-Doc (released model 0.176) is recorded as a limitation of fine-tuning on our statements.
+
+OCR arithmetic, 16 Nov 2026: on the first test-set run it flagged 49% of genuine rasterised statements. Rules for the misreads found by `scripts/diagnose_ocr_breaks.py` (missed amounts, lost leading digits, one-digit misreads, truncated balances) bring that to 2.5% (5 of 200) while flagging 47% of rasterised PDF edits. Fused (boosting) with ft4 and OCR: 62% of all forgeries at 1% false alarms, 71% at 5%. The score is now graded by the size of the largest break, so that the 1% threshold can separate small leftover misreads from edits.
 
 **0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 

@@ -29,12 +29,14 @@ comes from the breaks left on genuine rasterised test statements (16 Nov 2026,
   amount columns between two parsed rows.
 
 What remains (an amount changed without the balances following, or a balance changed
-without the next rows following) is evidence of an edit. The score rises with the number of
-such breaks; the signal abstains when it cannot read a table.
+without the next rows following) is evidence of an edit. The score rises with the size of
+the largest such break (and a little with their number); the signal abstains when it cannot
+read a table.
 """
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -56,6 +58,7 @@ class OcrFinancialReport:
     breaks: int = 0  # rows where the balance does not follow
     explained: int = 0  # breaks set aside as OCR misreads
     summary_breaks: int = 0  # summary values (opening, closing, totals) the table contradicts
+    largest: Decimal = Decimal(0)  # the largest unexplained break, in rupees
     findings: list[str] = field(default_factory=list)
     details: list[dict] = field(default_factory=list)  # each unexplained break, for diagnosis
     error: str | None = None
@@ -74,7 +77,11 @@ class OcrFinancialReport:
             return 0.5
         if self.unexplained == 0:
             return 0.0
-        return min(1.0, 0.6 + 0.1 * self.unexplained)
+        # Graded by size: a leftover misread is usually small (a digit or two), a forger's
+        # edit moves the balance by thousands. 0.6 at Rs 1, about 0.83 at Rs 10,000, 1.0 at a
+        # crore; each further break adds a little.
+        size = math.log10(1 + float(abs(self.largest))) / 7
+        return min(1.0, 0.6 + 0.35 * min(1.0, size) + 0.02 * (self.unexplained - 1))
 
 
 def clean_text(text: str) -> str:
@@ -233,6 +240,8 @@ def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> Ocr
     report.explained = sum(1 for r, _ in deltas if r.index in explained)
     report.findings = [f"row {r.index + 1}: balance off by {d}" for r, d in deltas
                        if r.index not in explained]
+    report.largest = max((abs(d) for r, d in deltas if r.index not in explained),
+                         default=Decimal(0))
     report.details = [{"row": r.index + 1, "page": r.page, "delta": str(d),
                        "cells": {k: (c.text, round(conf.get(id(c), 1.0), 3))
                                  for k, c in r.cells.items()}}
@@ -260,6 +269,7 @@ def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> Ocr
     for key, table_value in checks:
         if key in summary and sure(cells.get(key)) and abs(summary[key] - table_value) > TOLERANCE:
             report.summary_breaks += 1
+            report.largest = max(report.largest, abs(summary[key] - table_value))
             report.findings.append(f"summary {key} differs from the table by "
                                    f"{summary[key] - table_value}")
     return report

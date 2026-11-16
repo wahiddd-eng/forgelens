@@ -146,3 +146,9 @@ def test_a_truncated_balance_followed_by_a_one_digit_misread_is_explained():
     parsed, conf, cells = _statement(rows)
     parsed.opening_row.balance = D("2000.00")
     assert check_rows(parsed, conf, cells).unexplained == 0
+
+
+def test_the_score_grows_with_the_size_of_the_break():
+    small, large = OcrFinancialReport(rows=10, breaks=1), OcrFinancialReport(rows=10, breaks=1)
+    small.largest, large.largest = D("10.00"), D("216100.00")
+    assert 0.6 < small.score < 0.7 < large.score < 1.0

@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 FIELDS = ["file", "label", "method", "laundering", "bank_id", "pages", "rows", "breaks",
-          "explained", "summary_breaks", "score", "abstained", "error", "seconds"]
+          "explained", "summary_breaks", "largest", "score", "abstained", "error", "seconds"]
 
 
 def parse_args(argv=None):
@@ -73,7 +73,8 @@ def main(argv=None) -> int:
                 "laundering": (rec.get("laundering") or {}).get("method", "none"),
                 "bank_id": rec.get("bank_id", ""), "pages": rep.pages, "rows": rep.rows,
                 "breaks": rep.breaks, "explained": rep.explained,
-                "summary_breaks": rep.summary_breaks, "score": round(rep.score, 4),
+                "summary_breaks": rep.summary_breaks, "largest": str(rep.largest),
+                "score": round(rep.score, 4),
                 "abstained": rep.abstained, "error": rep.error or "",
                 "seconds": round(time.time() - t, 1)})
             fh.flush()
