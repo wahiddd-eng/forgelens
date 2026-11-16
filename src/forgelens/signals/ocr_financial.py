@@ -48,6 +48,7 @@ class OcrFinancialReport:
     explained: int = 0  # breaks set aside as OCR misreads
     summary_breaks: int = 0  # summary values (opening, closing, totals) the table contradicts
     findings: list[str] = field(default_factory=list)
+    details: list[dict] = field(default_factory=list)  # each unexplained break, for diagnosis
     error: str | None = None
 
     @property
@@ -199,6 +200,10 @@ def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> Ocr
     report.explained = sum(1 for r, _ in deltas if r.index in explained)
     report.findings = [f"row {r.index + 1}: balance off by {d}" for r, d in deltas
                        if r.index not in explained]
+    report.details = [{"row": r.index + 1, "page": r.page, "delta": str(d),
+                       "cells": {k: (c.text, round(conf.get(id(c), 1.0), 3))
+                                 for k, c in r.cells.items()}}
+                      for r, d in deltas if r.index not in explained]
 
     # The summary against the table: opening, closing and (when every amount was read
     # confidently, since one misread digit changes a total) the totals.
@@ -226,7 +231,7 @@ def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> Ocr
 
 
 def check_images(pages: list[np.ndarray], reader: OcrReader, dpi: int) -> OcrFinancialReport:
-    """OCR every page image, parse the statement, check the balances."""
+    """OCR every page image (rendered at ``dpi``), parse the statement, check the balances."""
     from forgelens.reader.statement import parse_cells
 
     cells, conf = [], {}
@@ -246,11 +251,14 @@ def check_images(pages: list[np.ndarray], reader: OcrReader, dpi: int) -> OcrFin
 
 
 def check_pdf(pdf: str | Path, reader: OcrReader, dpi: int = 150,
-              password: str | None = None) -> OcrFinancialReport:
+              password: str | None = None, scale: float = 1.0) -> OcrFinancialReport:
+    """``scale`` > 1 renders the pages larger than ``dpi`` before OCR (small print in a
+    150 DPI scan is read more reliably when enlarged)."""
     from forgelens.signals.image.pages import render_pages
 
+    render_dpi = round(dpi * scale)
     try:
-        pages = render_pages(pdf, dpi=dpi, password=password)
+        pages = render_pages(pdf, dpi=render_dpi, password=password)
     except Exception as exc:  # noqa: BLE001
         return OcrFinancialReport(error=type(exc).__name__)
-    return check_images(pages, reader, dpi)
+    return check_images(pages, reader, render_dpi)
