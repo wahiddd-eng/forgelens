@@ -58,6 +58,7 @@
   .ob td { font-weight: bold; color: {{ bank.primary_colour }}; }
   .summary, .summary-kv, .cards { page-break-inside: avoid; break-inside: avoid; }
   .note { margin-top: 9pt; font-size: 7.2pt; color: #777; }
+{{ m.style_overrides(bank) }}
 </style>
 </head>
 <body>
@@ -67,7 +68,7 @@
       <div class="tag">{{ bank.tagline }}</div>
     </div>
     <div class="doc">
-      <div class="t">Account Statement</div>
+      <div class="t">{{ m.title(bank, "Account Statement") }}</div>
       <div>{{ fmt_date(statement.period_start) }} – {{ fmt_date(statement.period_end) }}</div>
       <div>Issued {{ fmt_date(statement.generated_on) }}</div>
     </div>

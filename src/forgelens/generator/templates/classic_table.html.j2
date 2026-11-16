@@ -63,6 +63,7 @@
   .summary, .summary-kv, .cards { page-break-inside: avoid; break-inside: avoid; }
   .end { margin-top: 10pt; font-size: 7.4pt; color: #555; }
   .end p { margin: 2pt 0; }
+{{ m.style_overrides(bank) }}
 </style>
 </head>
 <body>
@@ -75,7 +76,7 @@
       </div>
     </div>
     <div class="doc-title">
-      <h1>Statement of Account</h1>
+      <h1>{{ m.title(bank, "Statement of Account") }}</h1>
       <p>Period: {{ fmt_date(statement.period_start) }} to {{ fmt_date(statement.period_end) }}</p>
       <p>Generated on: {{ fmt_date(statement.generated_on) }}</p>
     </div>

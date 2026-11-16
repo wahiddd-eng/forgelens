@@ -51,6 +51,7 @@
   .summary-kv td.v { text-align: right; white-space: nowrap; }
   .summary, .summary-kv, .cards { page-break-inside: avoid; break-inside: avoid; }
   .foot { margin-top: 10pt; font-size: 7.2pt; color: #444; border-top: 0.5pt solid #999; padding-top: 4pt; }
+{{ m.style_overrides(bank) }}
 </style>
 </head>
 <body>
@@ -59,7 +60,7 @@
     <div class="sub">{{ bank.tagline }}</div>
     <div class="branch">Branch: {{ c.branch_name }} &nbsp;|&nbsp; IFSC: {{ c.ifsc }} &nbsp;|&nbsp; MICR: {{ c.micr }}</div>
   </div>
-  <div class="title">STATEMENT OF ACCOUNT</div>
+  <div class="title">{{ m.title(bank, "Statement of Account")|upper }}</div>
 
   <table class="acct">
     <tr><td class="k">Name</td><td>{{ c.name }}</td><td class="k">Account No.</td><td>{{ c.account_number }}</td></tr>

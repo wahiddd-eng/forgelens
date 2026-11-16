@@ -40,6 +40,14 @@ from .pdf_edit import _font_index, _plan
 
 METHODS = ("splice", "inpaint")
 DEFAULT_MODEL = "diffusers/stable-diffusion-xl-1.0-inpainting-0.1"
+# Open inpainting models with the same diffusers interface, for varied training forgeries.
+# (Stability AI took down stabilityai/stable-diffusion-2-inpainting; sd2-community keeps
+# an unchanged copy under the same openrail++ licence.)
+MODELS = (
+    DEFAULT_MODEL,
+    "sd2-community/stable-diffusion-2-inpainting",
+    "stable-diffusion-v1-5/stable-diffusion-inpainting",
+)
 NEGATIVE = "blurry, handwriting, distorted, smudged, watermark, colourful"
 _FALLBACK_FONTS = {
     (False, False): ("LiberationSans-Regular", "DejaVuSans", "Arial"),
@@ -119,18 +127,25 @@ class DiffusionInpainter:
     """A diffusers inpainting pipeline. Call with lists of crops, masks and prompts."""
 
     def __init__(self, model: str = DEFAULT_MODEL, device: str = "cuda", steps: int = 30,
-                 guidance: float = 7.0, size: int = 1024):
+                 guidance: float = 7.0, size: int | None = None):
         import torch
         from diffusers import AutoPipelineForInpainting
 
         dtype = torch.float16 if device.startswith("cuda") else torch.float32
+        extra = {}
+        if "xl" not in model.lower():
+            # SD 1.x/2.x pipelines carry an NSFW filter that blanks images it misjudges: a
+            # blank patch would be a broken forgery, and these are crops of documents.
+            extra = {"safety_checker": None, "requires_safety_checker": False}
         try:
             pipe = AutoPipelineForInpainting.from_pretrained(model, torch_dtype=dtype,
-                                                             variant="fp16")
+                                                             variant="fp16", **extra)
         except (OSError, ValueError):  # no fp16 weights published
-            pipe = AutoPipelineForInpainting.from_pretrained(model, torch_dtype=dtype)
+            pipe = AutoPipelineForInpainting.from_pretrained(model, torch_dtype=dtype, **extra)
         self.pipe = pipe.to(device)
         self.pipe.set_progress_bar_config(disable=True)
+        if size is None:  # each model's training resolution
+            size = 1024 if "xl" in model.lower() else 512
         self.model, self.device, self.steps, self.guidance, self.size = (model, device, steps,
                                                                          guidance, size)
 

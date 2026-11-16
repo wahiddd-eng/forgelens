@@ -41,6 +41,7 @@ record = statement.ground_truth()  # dict saved as JSON next to the PDF
 | File | Purpose |
 | --- | --- |
 | `banks.py` | Fictional bank profiles (name, IFSC prefix, colours, font, template) |
+| `random_banks.py` | Procedurally generated fictional banks (`gen_0000`, `gen_0001`, ...) |
 | `transactions.py` | Customer and transaction generation, running balances |
 | `models.py` | `Customer`, `Transaction`, `Statement` and the ground-truth record |
 | `money.py` | Decimal rounding and Indian number formatting |
@@ -67,6 +68,27 @@ All ten banks are fictional; every statement carries a footer note saying so.
 Fonts use stacks that resolve on Linux (DejaVu, Liberation, Carlito) and fall back to Arial / Times / Calibri on macOS and Windows, so PDFs made on different machines differ slightly.
 
 Generate every bank at once with `--bank all`.
+
+## Generated banks
+
+Ten layouts are too few for an image model to learn traces that do not depend on the layout
+(`experiments/results/adcdnet_unseen_banks.md`), so `random_banks.py` makes as many more as
+needed. `random_bank(i)`, or `get_bank("gen_0007")`, always returns the same bank for the same
+number. Each varies everything the hand-made banks vary (template, columns and their order,
+labels, date and number formats, font including monospace, orientation, summary position,
+zebra rows) and the look of the page (`BankProfile.style`: table-header style, cell rules,
+row spacing, masthead alignment, logo shape, title wording, text colour). Names are invented
+compounds that avoid the names of real Indian banks, and IFSC prefixes start with Q.
+
+```bash
+# 100 generated banks (gen_0000 ... gen_0099), 4 statements each
+python scripts/generate_statements.py --bank generated --generated 0 100 --count 4 \
+    --seed 6000 --months 2 --out data/synthetic/genuine_gen
+```
+
+Labels stay within words the reader recognises, and every statement is read back against its
+ground truth as usual; on 200 generated banks with 2-month statements all read back. The
+hand-made banks render exactly as before (`style` is empty for them).
 
 ## Adding a bank layout
 

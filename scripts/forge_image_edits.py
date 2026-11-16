@@ -47,14 +47,18 @@ def parse_args(argv=None):
     p.add_argument("--per-statement", type=int, default=1)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--dpi", type=int, default=150, help="as launder_pdfs.py --method raster")
-    p.add_argument("--jpeg-quality", type=int, default=85, help="as launder_pdfs.py")
+    p.add_argument("--jpeg-quality", type=int, nargs="+", default=[85],
+                   help="as launder_pdfs.py; with several, one is chosen per forgery")
     p.add_argument("--masks", action="store_true", help="also write PNG masks")
+    p.add_argument("--tag", default="", help="appended to every output name, so a second set "
+                   "gets ids of its own (e.g. _v2)")
     p.add_argument("--limit", type=int, help="at most N genuine statements (smoke test)")
     p.add_argument("--shard", default="0/1", help="i/n: do every n-th statement, from the i-th")
     p.add_argument("--preview", type=int, default=0, metavar="N",
                    help="save before/after pictures of the first N forgeries in <out>/preview")
     g = p.add_argument_group("inpainting")
-    g.add_argument("--model", default=DEFAULT_MODEL, help="diffusers inpainting model")
+    g.add_argument("--model", nargs="+", default=[DEFAULT_MODEL],
+                   help="diffusers inpainting model(s); with several, one is chosen per forgery")
     g.add_argument("--strength", type=float, nargs="+", default=[0.45, 0.6, 0.75],
                    help="chosen per forgery from these. 1.0 regenerates the value entirely; at "
                         "SDXL's text skill that gives garbled digits or invented badges, so the "
@@ -104,12 +108,15 @@ def main(argv=None) -> int:
     records = [r for r in records
                if zlib.crc32(r[1]["statement_id"].encode()) % shards == shard]
 
-    inpainter = None
-    if args.method == "inpaint":
-        from forgelens.forgery.image_edit import DiffusionInpainter
+    inpainters: dict = {}
 
-        print(f"loading {args.model} …", flush=True)
-        inpainter = DiffusionInpainter(args.model, args.device, steps=args.steps)
+    def inpainter_for(model):  # loaded on first use, then kept (all fit on one A100)
+        if model not in inpainters:
+            from forgelens.forgery.image_edit import DiffusionInpainter
+
+            print(f"loading {model} …", flush=True)
+            inpainters[model] = DiffusionInpainter(model, args.device, steps=args.steps)
+        return inpainters[model]
 
     args.out.mkdir(parents=True, exist_ok=True)
     made = skipped = failed = 0
@@ -120,16 +127,19 @@ def main(argv=None) -> int:
             rng = random.Random(seed)
             operation, consistent, _ = rng.choices(VARIANTS, weights=[v[2] for v in VARIANTS])[0]
             variant = operation + ("_consistent" if consistent else "")
-            stem = f"{record['statement_id']}__img{args.method}_{variant}_{k:02d}"
+            stem = f"{record['statement_id']}__img{args.method}_{variant}_{k:02d}{args.tag}"
             out_pdf = args.out / f"{stem}.pdf"
             if out_pdf.exists() and out_pdf.with_suffix(".json").exists():
                 skipped += 1
                 continue
             strength = rng.choice(args.strength)
+            quality = rng.choice(args.jpeg_quality)
+            model = rng.choice(args.model)
+            inpainter = inpainter_for(model) if args.method == "inpaint" else None
             try:
                 label = forge_image(pdf, record, out_pdf, operation=operation,
                                     consistent=consistent, method=args.method, seed=seed,
-                                    dpi=args.dpi, jpeg_quality=args.jpeg_quality,
+                                    dpi=args.dpi, jpeg_quality=quality,
                                     inpainter=inpainter, strength=strength)
             except ValueError as exc:  # e.g. a statement without credits
                 print(f"skip {stem}: {exc}")

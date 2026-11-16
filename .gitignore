@@ -47,3 +47,5 @@ configs/*.yaml
 
 # ADCD-Net run folders (per-image CSVs, masks); tables are copied to adcdnet_<tag>.md
 experiments/results/adcdnet_*/
+# fusion runs (statements.csv, model.pkl); their summaries are copied into fusion_*.md
+experiments/results/fusion_*/

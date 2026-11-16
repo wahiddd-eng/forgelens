@@ -71,8 +71,9 @@ Log in first: `hf auth login` for Hugging Face, and put a Kaggle API token in
 `~/.kaggle/kaggle.json` (`chmod 600`). Archive passwords are asked for and never saved.
 
 Copy datasets and checkpoints the same way (`rsync -av --partial --progress`, which can
-resume an interrupted copy). **Real bank statements never go on the DGX**: it is shared and
-has no backups.
+resume an interrupted copy). **Real bank statements stay off the DGX** except for one run of
+`scripts/eval_real.sh`, which deletes them (see Real statements below): it is shared and has
+no backups.
 
 ## Environment
 
@@ -170,6 +171,60 @@ Final comparisons use a held-out test set of new statements that no model is tra
 so its fonts match the training set). It is marked `.heldout`, and `train_adcdnet.py` refuses
 to train on it. `train_adcdnet.py --exclude-banks A B` leaves two banks out of training, to
 test them later as unseen layouts.
+
+### Unseen layouts (ft4)
+
+`bash scripts/queue_ft4.sh 2>&1 | tee ~/night4.log` builds statements of 100 generated banks
+(`src/forgelens/generator/random_banks.py`) with varied forgeries, trains ft4 on them alone,
+and tests it on the held-out test set, whose ten hand-made banks it has never seen. About
+9 hours on two GPUs.
+
+### Final model ft5 (about 9 hours)
+
+`bash scripts/queue_ft5.sh 2>&1 | tee ~/night6.log` runs ft4 on the rasterised test forgeries
+(fusion needs every test folder scored), trains ft5 on the ft3 and ft4 training data together
+(page caches merged with hard links), evaluates it on the test set, AIForge-Doc and DocTamper,
+and reruns fusion. It uses one GPU while another of our jobs holds a second.
+
+### OCR arithmetic (GPU, about an hour)
+
+The running-balance check for rasterised statements reads the page images with EasyOCR
+(`pip install easyocr==1.7.2 "numpy<2"` once):
+
+```bash
+G=$(bash scripts/free_gpus.sh 1 --wait) && CUDA_VISIBLE_DEVICES=$G python scripts/eval_ocr_financial.py \
+    --tag test --data $T/genuine_raster $T/forged_raster $T/forged_image --resume
+```
+
+`run_fusion.sh` then adds a fusion run with it and the released ADCD-Net as extra signals
+(`fusion_test-<model>-plus`).
+
+### Fusion (CPU)
+
+`bash scripts/run_fusion.sh` runs the rule-based signals on the test set and fuses them with
+each fine-tuned model's test-set scores (`experiments/results/fusion_test-<model>/`). No GPU;
+it can run beside a GPU queue. For image scores on the digital (not rasterised) test
+statements too, first run the model on them:
+`eval_adcdnet_pages.py --ckpt <best> --tag test-ft1-digital --data $T/genuine $T/forged` (GPU).
+
+## Real statements
+
+Real statements may come to the DGX only for the length of one run, and are deleted by it.
+
+1. On the DGX: `mkdir -m 700 ~/real_statements`.
+2. On the Mac, rename copies of the statements `S001.pdf`, `S002.pdf`, ... (no account numbers
+   in names), write `statements.tsv` beside them (one line per file:
+   `S001.pdf<TAB>bank name<TAB>password`, password empty when there is none), and copy them over:
+   `scp S*.pdf statements.tsv srmist32@172.16.0.32:~/real_statements/`
+3. On the DGX: `bash scripts/eval_real.sh`. It refuses a folder that others can read or whose
+   name does not start with `real` (the backup skips those), saves no page pictures, writes
+   only counts, bank names and file IDs to `experiments/results/real_<date>.md`, and deletes
+   `~/real_statements` when it ends, also when it fails (`KEEP=1` keeps it, e.g. to fix a
+   password; then delete it yourself).
+4. Commit the `real_<date>.md` summary; nothing else from the run.
+
+Passwords live only in `statements.tsv`, which is deleted with the folder: keep them on your
+own device, never in the collection log or in Drive next to the files.
 
 ## Rules that affect planning
 

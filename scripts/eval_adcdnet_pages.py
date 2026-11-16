@@ -58,6 +58,8 @@ def parse_args(argv=None):
     p.add_argument("--precision", choices=["fp16", "fp32"], default="fp16")
     p.add_argument("--batch-size", type=int, default=16, help="tiles per forward pass")
     p.add_argument("--limit", type=int, help="at most N statements per group (smoke test)")
+    p.add_argument("--banks", nargs="+", metavar="BANK",
+                   help="only statements of these banks (e.g. the ones a model was trained without)")
     p.add_argument("--save-maps", type=int, default=0, metavar="N",
                    help="save heat maps of the first N forged pages that have edits")
     p.add_argument("--resume", action="store_true", help="skip pages already in pages.csv")
@@ -77,8 +79,9 @@ def load_paths(args) -> adcdnet.Paths:
                          doctamper_root=cfg.get("doctamper_root"), qt_path=cfg.get("qt_path"))
 
 
-def statements(folders: list[Path], limit: int | None):
-    """(pdf, record, group) for labelled statements, at most ``limit`` per group."""
+def statements(folders: list[Path], limit: int | None, banks: list[str] | None = None):
+    """(pdf, record, group) for labelled statements, at most ``limit`` per group, from
+    ``banks`` only when given."""
     seen: dict[tuple, int] = defaultdict(int)
     for folder in folders:
         for json_path in sorted(folder.expanduser().rglob("*.json")):
@@ -88,6 +91,8 @@ def statements(folders: list[Path], limit: int | None):
                 continue
             pdf = json_path.with_suffix(".pdf")
             if record.get("label") not in ("genuine", "forged") or not pdf.exists():
+                continue
+            if banks and record.get("bank_id") not in banks:
                 continue
             group = (record["label"], (record.get("forgery") or {}).get("method", "genuine"),
                      (record.get("laundering") or {}).get("method", "none"))
@@ -185,6 +190,8 @@ def markdown(lines: list[dict], run: dict, partial: bool) -> str:
              "regions, per statement (95% CI).")
     header = ("| Laundering | Forgery | Genuine | Forged | AUC (peak) | Caught @5% | Caught @1% "
               "| AUC (area) | F1 | 95% CI |")
+    if run["settings"].get("banks"):
+        intro += f" Banks: {', '.join(run['settings']['banks'])} only."
     md += [intro, "", header,
            "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |"]
     for x in lines:
@@ -211,7 +218,7 @@ def main(argv=None) -> int:
     if problems:
         print("Cannot run:", *[f"  ✗ {p}" for p in problems], sep="\n", file=sys.stderr)
         return 1
-    items = list(statements(args.data, args.limit))
+    items = list(statements(args.data, args.limit, args.banks))
     if not items:
         print("no labelled statements (PDF + JSON) found in --data", file=sys.stderr)
         return 1
@@ -246,7 +253,8 @@ def main(argv=None) -> int:
                ckpt=str(paths.ckpt), ckpt_sha256=adcdnet.sha256(paths.ckpt),
                fine_tuned=args.ckpt is not None, environment=adcdnet.environment(),
                settings={"dpi": args.dpi, "tile": 512, "stride": 384,
-                         "precision": args.precision, "limit": args.limit})
+                         "precision": args.precision, "limit": args.limit,
+                         "banks": args.banks})
 
     from tqdm import tqdm
 

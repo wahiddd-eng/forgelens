@@ -104,8 +104,10 @@ def _metrics(rows: list[dict], signal: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--genuine", type=Path, required=True)
-    parser.add_argument("--forged", type=Path, required=True)
+    parser.add_argument("--genuine", type=Path, nargs="+", required=True,
+                        help="folder(s) of genuine statements (searched recursively)")
+    parser.add_argument("--forged", type=Path, nargs="+", required=True,
+                        help="folder(s) of forged statements")
     parser.add_argument("--templates", type=Path, help="profiles from scripts/fit_templates.py")
     parser.add_argument("--out", type=Path, default=Path("experiments/results"))
     parser.add_argument("--tag", default="v1")
@@ -118,7 +120,7 @@ def main() -> None:
     rows = []
     loc = defaultdict(lambda: {"edits": 0, "edits_found": 0, "locations": 0,
                                "locations_on_edits": 0})  # (signal, method) -> counts
-    for pdf, record in _items([args.genuine, args.forged]):
+    for pdf, record in _items([*args.genuine, *args.forged]):
         row, located = _evaluate(pdf, record, matcher)
         row["either"] = any(row[s] for s in signals)
         rows.append(row)
