@@ -6,14 +6,22 @@ rule-based signal. This signal reads the page images with an OCR engine (EasyOCR
 the words into the same text cells the PDF reader produces, parses the table with the same
 reader (``reader.statement.parse_cells``), and checks the balances row by row.
 
-OCR misreads look like edits, so breaks a misread explains are set aside:
+OCR misreads look like edits, so breaks a misread explains are set aside. Each rule below
+comes from the breaks left on genuine rasterised test statements (16 Nov 2026,
+``scripts/diagnose_ocr_breaks.py``):
 
 * a balance misread by ``e`` breaks the chain at that row by ``+e`` and at the next by
   ``-e``: such cancelling pairs are dropped;
+* a balance read with its leading digits lost ("088.11" for "68,088.11") is dropped when the
+  next row follows from the balance it should have been (after an edit the next row follows
+  the printed balance), and the chain continues from there;
+* a break on a row whose amount the OCR did not read at all is dropped (every transaction
+  has an amount; a forger's edit leaves one);
+* an amount read with leading digits lost ("835.00" for "6,835.00") is dropped;
+* a debit read with one digit wrong ("59.00" for "69.00"), or a credit read lower than it
+  is by one digit, is dropped. A credit read *higher* than the balances allow is kept:
+  inflating a credit is the edit forgers make;
 * a break on a row whose amount or balance was read with low confidence is dropped;
-* a break that adding back would turn the amount read into one that ends with it
-  ("500.00" read for "6,500.00": leading digits lost) is dropped when the OCR was unsure of
-  that amount (a forger's printed edit is read confidently);
 * a break after rows the reader skipped (a misread date makes the reader miss a row, which
   then breaks the chain by that row's amount) is dropped: such rows leave figures in the
   amount columns between two parsed rows.
@@ -35,7 +43,6 @@ import numpy as np
 
 TOLERANCE = Decimal("0.011")
 MIN_CONFIDENCE = 0.5  # below this, a break on the row may be the OCR's own mistake
-TRUNCATION_CONFIDENCE = 0.85  # below this, a read that lost leading digits is explained
 _NUMERIC = re.compile(r"^[\d,.\sOoIlSsBDCcRr()-]+$")
 _FIX = str.maketrans({"O": "0", "o": "0", "I": "1", "l": "1", "S": "5", "s": "5", "B": "8"})
 
@@ -152,17 +159,28 @@ def _digits(x: Decimal) -> str:
     return f"{abs(x):.2f}".replace(".", "")
 
 
-def _truncated(row, delta: Decimal, conf: dict[int, float]) -> bool:
-    """True when the break is the amount's lost leading digits, read without confidence."""
+def _one_digit_apart(a: Decimal, b: Decimal) -> bool:
+    x, y = _digits(a), _digits(b)
+    return len(x) == len(y) and sum(p != q for p, q in zip(x, y)) == 1
+
+
+def _amount_misread(row, delta: Decimal, truncation: bool = True) -> bool:
+    """True when the break is explained by the row's amount being misread: leading digits
+    lost, or one digit wrong (for a credit, only when read lower than it is)."""
     for name, true_value in (("debit", (row.debit or 0) - delta),
                              ("credit", (row.credit or 0) + delta)):
-        value, cell = getattr(row, name), row.cells.get(name)
-        if value is None or cell is None or true_value <= value:
+        value = getattr(row, name)
+        if value is None or name not in row.cells or true_value <= 0:
             continue
-        if conf.get(id(cell), 1.0) < TRUNCATION_CONFIDENCE \
-                and _digits(true_value).endswith(_digits(value)):
+        if truncation and true_value > value and _digits(true_value).endswith(_digits(value)):
+            return True  # leading digits lost
+        if _one_digit_apart(true_value, value) and (name == "debit" or true_value > value):
             return True
     return False
+
+
+def _balance_truncated(read: Decimal, expected: Decimal) -> bool:
+    return 0 <= read < expected and _digits(expected).endswith(_digits(read))
 
 
 def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> OcrFinancialReport:
@@ -172,16 +190,27 @@ def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> Ocr
     if len(rows) < 3:
         return report
     deltas = []  # (row, delta) where the balance does not follow from the previous one
+    explained: set[int] = set()
     prev = parsed.opening_row.balance if parsed.opening_row is not None else None
-    for r in rows:
+    for i, r in enumerate(rows):
+        balance = r.balance
         if prev is not None and not r.is_opening:
             expected = prev + (r.credit or 0) - (r.debit or 0)
             d = r.balance - expected
             if abs(d) > TOLERANCE:
                 deltas.append((r, d))
-        prev = r.balance
+                # A balance that lost its leading digits, if the next row follows from the
+                # balance it should have been (after an edit, it follows the printed one).
+                nxt = rows[i + 1] if i + 1 < len(rows) else None
+                if nxt is not None and _balance_truncated(r.balance, expected):
+                    d2 = nxt.balance - (expected + (nxt.credit or 0) - (nxt.debit or 0))
+                    # (one wrong digit only: an edit's round difference often looks like
+                    # lost leading digits of a small amount)
+                    if abs(d2) <= TOLERANCE or _amount_misread(nxt, d2, truncation=False):
+                        explained.add(r.index)
+                        balance = expected  # carry on from the balance it should have been
+        prev = balance
     report.breaks = len(deltas)
-    explained: set[int] = set()
     for (a, da), (b, db) in pairwise(deltas):
         if b.index == a.index + 1 and abs(da + db) <= TOLERANCE:
             explained |= {a.index, b.index}  # one balance misread: cancelling pair
@@ -190,7 +219,9 @@ def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> Ocr
         own = [c for k, c in r.cells.items() if k in ("debit", "credit", "balance")]
         if own and min(conf.get(id(c), 1.0) for c in own) < MIN_CONFIDENCE:
             explained.add(r.index)
-        if _truncated(r, d, conf):
+        if not any(k in r.cells for k in ("debit", "credit")):
+            explained.add(r.index)  # the OCR missed the amount
+        if _amount_misread(r, d):
             explained.add(r.index)
         prev_row = max((q for i, q in by_index.items() if i < r.index), key=lambda q: q.index,
                        default=parsed.opening_row)
@@ -216,8 +247,8 @@ def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> Ocr
         checks.append(("opening", parsed.opening_row.balance))
     checks.append(("closing", rows[-1].balance))
     amount_cells = [c for r in parsed.rows for k, c in r.cells.items() if k in ("debit", "credit")]
-    skipped_any = any(r.index in explained for r, _ in deltas)
-    if all(sure(c) for c in amount_cells) and not skipped_any:
+    # one misread amount anywhere changes a total, so totals only for a chain read cleanly
+    if all(sure(c) for c in amount_cells) and not deltas:
         checks += [("total_debits", sum((r.debit for r in parsed.rows if r.debit is not None),
                                         Decimal(0))),
                    ("total_credits", sum((r.credit for r in parsed.rows if r.credit is not None),

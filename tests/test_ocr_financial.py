@@ -72,15 +72,15 @@ def test_a_lost_leading_digit_read_without_confidence_is_explained():
             ("10.00", None, "-5610.00", 0.99)]
     rep = check_rows(*_statement(rows))
     assert rep.breaks == 1 and rep.unexplained == 0
-    rows[1] = ("500.00", None, "-5600.00", 0.99)  # read confidently: an edit
-    assert check_rows(*_statement(rows)).unexplained == 1
+    rows[1] = ("500.00", None, "-5600.00", 0.99)  # read confidently: still a misread
+    assert check_rows(*_statement(rows)).unexplained == 0
 
 
 def test_a_skipped_row_is_explained():
     # a row between rows 1 and 2 was not parsed (its date misread), but its debit was read
-    skipped = _cell("300.00", 410, 142)
-    rows = [("100.00", None, "900.00", 0.99), ("50.00", None, "550.00", 0.99),
-            ("10.00", None, "540.00", 0.99)]
+    skipped = _cell("340.00", 410, 142)
+    rows = [("100.00", None, "900.00", 0.99), ("50.00", None, "510.00", 0.99),
+            ("10.00", None, "500.00", 0.99)]
     parsed, conf, cells = _statement(rows, [skipped])
     rep = check_rows(parsed, conf, cells)
     assert rep.breaks == 1 and rep.unexplained == 0
@@ -97,3 +97,52 @@ def test_a_misread_balance_breaks_twice_and_is_explained():
 def test_too_few_rows_abstains():
     rep = check_rows(*_statement([("100.00", None, "900.00", 0.99)]))
     assert rep.abstained and rep.score == 0.5 and OcrFinancialReport().abstained
+
+
+def test_misreads_seen_on_genuine_test_statements_are_explained():
+    # debit 69.00 read as 59.00 (one digit), with the balances right
+    rows = [("100.00", None, "900.00", 0.99), ("59.00", None, "831.00", 0.95),
+            ("31.00", None, "800.00", 0.99)]
+    assert check_rows(*_statement(rows)).unexplained == 0
+    # credit 1,699.00 read as 699.00 (leading digits lost), confidently
+    rows = [("100.00", None, "900.00", 0.99), (None, "699.00", "2599.00", 0.99),
+            ("99.00", None, "2500.00", 0.99)]
+    assert check_rows(*_statement(rows)).unexplained == 0
+
+
+def test_a_missing_amount_is_explained():
+    parsed, conf, cells = _statement([("100.00", None, "900.00", 0.99),
+                                      ("40.00", None, "860.00", 0.99),
+                                      ("60.00", None, "800.00", 0.99)])
+    del parsed.rows[1].cells["debit"]
+    parsed.rows[1].debit = None
+    assert check_rows(parsed, conf, cells).unexplained == 0
+
+
+def test_a_truncated_balance_is_explained_and_the_chain_continues():
+    rows = [("100.00", None, "1,900.00", 0.99), ("100.00", None, "800.00", 0.99),  # 1,800
+            ("300.00", None, "1,500.00", 0.99)]
+    parsed, conf, cells = _statement(rows)
+    parsed.opening_row.balance = D("2000.00")
+    rep = check_rows(parsed, conf, cells)
+    assert rep.breaks == 1 and rep.unexplained == 0
+
+
+def test_inflated_credits_and_balances_are_still_caught():
+    # a credit of 20,000 changed to 60,000 (one digit, read higher): kept
+    rows = [("100.00", None, "900.00", 0.99), (None, "60,000.00", "20,900.00", 0.99),
+            ("900.00", None, "20,000.00", 0.99)]
+    assert check_rows(*_statement(rows)).unexplained == 1
+    # a closing balance raised without the amounts following
+    rows = [("100.00", None, "900.00", 0.99), ("100.00", None, "800.00", 0.99),
+            ("300.00", None, "8,500.00", 0.99)]
+    assert check_rows(*_statement(rows)).unexplained == 1
+
+
+def test_a_truncated_balance_followed_by_a_one_digit_misread_is_explained():
+    # 1,800 read as 800, and the next debit 200 read as 100 (one digit)
+    rows = [("100.00", None, "1,900.00", 0.99), ("100.00", None, "800.00", 0.99),
+            ("100.00", None, "1,600.00", 0.99)]
+    parsed, conf, cells = _statement(rows)
+    parsed.opening_row.balance = D("2000.00")
+    assert check_rows(parsed, conf, cells).unexplained == 0
