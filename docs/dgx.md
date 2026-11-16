@@ -179,6 +179,13 @@ test them later as unseen layouts.
 and tests it on the held-out test set, whose ten hand-made banks it has never seen. About
 9 hours on two GPUs.
 
+### Final model ft5 (about 9 hours)
+
+`bash scripts/queue_ft5.sh 2>&1 | tee ~/night6.log` runs ft4 on the rasterised test forgeries
+(fusion needs every test folder scored), trains ft5 on the ft3 and ft4 training data together
+(page caches merged with hard links), evaluates it on the test set, AIForge-Doc and DocTamper,
+and reruns fusion. It uses one GPU while another of our jobs holds a second.
+
 ### OCR arithmetic (GPU, about an hour)
 
 The running-balance check for rasterised statements reads the page images with EasyOCR

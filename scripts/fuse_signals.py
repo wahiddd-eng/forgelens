@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 from forgelens.fusion import evaluate, join, load_image, load_signals, out_of_fold
-from forgelens.fusion.fuse import FUSED, SINGLE, fit_final, load_ocr
+from forgelens.fusion.fuse import FUSED, SINGLE, coverage_gaps, fit_final, load_ocr
 from forgelens.utils import run_info
 
 NAMES = {"image": "Image (ADCD-Net)", "image_released": "Image (released)",
@@ -99,6 +99,13 @@ def main(argv=None) -> int:
     if not statements or all(st.forged for st in statements) or not any(st.forged for st in statements):
         print("Need genuine and forged statements", file=sys.stderr)
         return 1
+    gaps = coverage_gaps(statements)
+    if gaps:
+        print("Uneven image-model coverage: the present/absent flag would leak the label. "
+              "Run the image model on the missing folders first.", file=sys.stderr)
+        for g in gaps:
+            print("  " + g, file=sys.stderr)
+        return 2
     fused = out_of_fold(statements, args.folds)
     result = evaluate(statements, fused)
     result["run"] = run_info(vars(args))

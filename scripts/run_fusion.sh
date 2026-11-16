@@ -4,7 +4,7 @@
 #   2. the rule-based signals on every test statement;
 #   3. fusion with each fine-tuned image model whose test-set run exists.
 #
-#   bash scripts/run_fusion.sh                # ft1, and ft3/ft4 when their runs exist
+#   bash scripts/run_fusion.sh                # ft1, and ft3/ft4/ft5 when their runs exist
 #
 # Results: experiments/results/fusion_test-<model>/summary.md
 
@@ -20,7 +20,7 @@ R=experiments/results
     --templates experiments/templates_dgx.json --tag test --out $R \
     --genuine "$T/genuine" "$T/genuine_raster" \
     --forged "$T/forged" "$T/forged_raster" "$T/forged_image" > /dev/null || exit 1
-for model in ft1 ft3 ft4; do
+for model in ft1 ft3 ft4 ft5; do
     pages=("$R"/adcdnet_pages_test-$model*/pages.csv)  # e.g. test-ft1 and test-ft1-digital
     [[ -f ${pages[0]} ]] || { echo "no test-set run of $model yet: skipped"; continue; }
     echo "==> fusion with $model (${#pages[@]} image run(s))"

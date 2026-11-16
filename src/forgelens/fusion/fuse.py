@@ -143,6 +143,31 @@ def load_ocr(paths: list[Path]) -> dict[str, float | None]:
 
 # ---------------------------------------------------------------- fusion
 
+def coverage_gaps(statements: list[Statement], signals=(IMAGE, IMAGE_RELEASED),
+                  tolerance: float = 0.05) -> list[str]:
+    """Image runs that covered genuine and forged files of one laundering setting unevenly.
+
+    A score that is missing for (say) every rasterised PDF edit but present for every
+    rasterised genuine statement would let the present/absent flag give the label away. Each
+    gap is described in one line; an empty list means the coverage is even.
+    """
+    gaps = []
+    for s in signals:
+        if not any(st.scores.get(s) is not None for st in statements):
+            continue
+        for laundering in sorted({st.laundering for st in statements}):
+            rate = {}
+            for label in ("genuine", "forged"):
+                group = [st for st in statements if st.laundering == laundering and st.label == label]
+                if group:
+                    rate[label] = sum(st.scores.get(s) is not None for st in group) / len(group)
+            if len(rate) == 2 and abs(rate["genuine"] - rate["forged"]) > tolerance:
+                gaps.append(f"{s}, laundering {laundering}: scored for {rate['genuine']:.0%} of "
+                            f"genuine and {rate['forged']:.0%} of forged statements")
+    return gaps
+
+
+
 def present_signals(statements: list[Statement]) -> list[str]:
     """The signals with a score for at least one statement (a signal never run is left out)."""
     return [s for s in SINGLE if any(st.scores.get(s) is not None for st in statements)]

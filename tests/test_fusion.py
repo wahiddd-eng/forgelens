@@ -82,3 +82,15 @@ def test_loading_csvs_marks_abstentions_as_missing(tmp_path):
     raster = st["a__raster.pdf"]
     assert raster.scores["financial"] is None and raster.scores["image"] == 0.6
     assert raster.image_area == 0.001 and raster.group == "a"
+
+
+def test_coverage_gaps_catch_a_leaking_presence_flag():
+    from forgelens.fusion.fuse import coverage_gaps
+    sts = _statements(40)
+    assert coverage_gaps(sts) == []
+    # the image model run on genuine rasterised pages but not on rasterised forgeries
+    for st in sts:
+        if st.forged and st.laundering == "raster":
+            st.scores["image"] = None
+    gaps = coverage_gaps(sts)
+    assert len(gaps) == 1 and "raster" in gaps[0] and "0% of forged" in gaps[0]
