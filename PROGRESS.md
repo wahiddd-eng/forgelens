@@ -30,7 +30,7 @@ Agreed but not yet started. Move an item into a weekly entry when work begins.
 | Item | Phase | Owner | Notes |
 | --- | --- | --- | --- |
 | Fine-tuning on bank-statement pages | Phase 1 | Dhruv | Joint training with DocTamper confirmed allowed by its authors (13 Nov), weights may be released; use their mask thresholds 8 and 160 |
-| Unseen-layout run ft4: train on 100 generated banks only, test on the 10 hand-made banks (`scripts/queue_ft4.sh`) | Phase 1 | Both | Generator for any number of fictional banks added 15 Nov (`generator/random_banks.py`); run after ft3 |
+| Final image model ft5: generated banks plus ft3's varied forgeries (three inpainting models, JPEG 60–95) | Phase 1 | Both | Combines what helped in ft3 (AIForge-Doc) and ft4 (unseen layouts) |
 | Fusion on the held-out test set (`scripts/run_fusion.sh`, CPU) | Phase 4 | Both | Fusion module and script written 15 Nov (`fusion/fuse.py`, `scripts/fuse_signals.py`): logistic and boosting models, out-of-fold by source statement, one threshold for all inputs |
 | Real-statement collection from friends and family | Phase 2 | Wahid, Dhruv | Guide confirmed on 15 Nov 2026 that no consent forms are needed. Target 100 statements (minimum 50) from at least 8 banks; original PDFs, unedited. Stored in a private Google Drive folder; on the DGX only for one run of `scripts/eval_real.sh`, which deletes them (rule changed 15 Nov 2026, see `docs/dgx.md`) |
 | PyTorch 2.7+ with CUDA 12.8+ environment for the RTX 5060 Ti | Phase 1 | Dhruv | Optional now that the DGX is set up; for debugging at home |
@@ -160,6 +160,8 @@ Unseen bank layouts, 15 Nov 2026 (`experiments/results/adcdnet_unseen_banks.md`)
 ft3, varied forgeries, 15 Nov 2026 (`experiments/results/adcdnet_ft3.md`): trained on forgeries by three inpainting models and pages at JPEG quality 60–95, ft3 recovers most of ft1's loss on AIForge-Doc (F1 0.115 against 0.026; authentic false alarms 4.9% against 9.6%) and keeps 94–95% caught at 1% on new statements. Still below the released model on AIForge-Doc (0.176): more variety is needed.
 
 Fusion on the held-out test set, 15 Nov 2026 (`experiments/results/fusion_test.md`): the four signals fused by gradient boosting catch 63% of all 1,196 forgeries at 1% false alarms, against 33% for the fine-tuned image model alone and 26% for the best rule-based signal (AUC 0.871 against 0.672 and 0.781). H1 holds on this test set. The remaining misses are almost all PDF edits and rebuilds that were then rasterised (a third of the forgeries), which leave no trace any signal sees; of the rest, fusion catches 94%.
+
+ft4, unseen bank layouts, 16 Nov 2026 (`experiments/results/adcdnet_ft4.md`): trained only on 100 generated fictional banks (396 statements), ft4 catches 100% (AI inpainting) and 99% (splice) at 1% false alarms on the 10 hand-made banks it never saw, against 96% for ft1, which trained on them, and 60% / 85% for ft2 on its 2 unseen banks. H4 holds: enough layout variety removes the dependence on known banks. Pixel F1 0.79 (ft1 0.71). On AIForge-Doc F1 0.076 with the fewest false alarms (1.6%); ft3's varied forgeries still help more there, so ft5 will combine both.
 
 **0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 
