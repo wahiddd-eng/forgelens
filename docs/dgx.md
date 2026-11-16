@@ -207,6 +207,14 @@ it can run beside a GPU queue. For image scores on the digital (not rasterised) 
 statements too, first run the model on them:
 `eval_adcdnet_pages.py --ckpt <best> --tag test-ft1-digital --data $T/genuine $T/forged` (GPU).
 
+### Ablations and misses (CPU, a few minutes)
+
+After `run_fusion.sh`: `bash scripts/run_ablations.sh` (H2: fusion with each signal left out,
+and the image model with each signal alone; `experiments/results/ablations_test-ft4.md`), and
+`python scripts/explain_misses.py --run experiments/results/fusion_test-ft4-plus --data
+~/forgelens-data/synthetic_test` (which forgeries are missed, and how many leave no trace any
+signal can read; `misses.md` in the run folder).
+
 ## Real statements
 
 Real statements may come to the DGX only for the length of one run, and are deleted by it.
