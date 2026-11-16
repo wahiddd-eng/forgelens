@@ -22,6 +22,8 @@ comes from the breaks left on genuine rasterised test statements (16 Nov 2026,
   is by one digit, is dropped. A credit read *higher* than the balances allow is kept:
   inflating a credit is the edit forgers make;
 * a break on a row whose amount or balance was read with low confidence is dropped;
+* the summary (opening, closing, totals) is checked against the table only when the chain
+  has no breaks at all;
 * a break after rows the reader skipped (a misread date makes the reader miss a row, which
   then breaks the chain by that row's amount) is dropped: such rows leave figures in the
   amount columns between two parsed rows.
@@ -242,12 +244,14 @@ def check_rows(parsed, conf: dict[int, float], cells: list | None = None) -> Ocr
         return cell is None or conf.get(id(cell), 1.0) >= MIN_CONFIDENCE
 
     summary, cells = parsed.summary, parsed.summary_cells
+    # Only for a chain read without breaks: after a misread, the table's own closing balance
+    # or totals may be the misread ones (and an edit that breaks the chain is caught there).
     checks = []
-    if parsed.opening_row is not None and parsed.opening_row.balance is not None:
-        checks.append(("opening", parsed.opening_row.balance))
-    checks.append(("closing", rows[-1].balance))
+    if not deltas:
+        if parsed.opening_row is not None and parsed.opening_row.balance is not None:
+            checks.append(("opening", parsed.opening_row.balance))
+        checks.append(("closing", rows[-1].balance))
     amount_cells = [c for r in parsed.rows for k, c in r.cells.items() if k in ("debit", "credit")]
-    # one misread amount anywhere changes a total, so totals only for a chain read cleanly
     if all(sure(c) for c in amount_cells) and not deltas:
         checks += [("total_debits", sum((r.debit for r in parsed.rows if r.debit is not None),
                                         Decimal(0))),
