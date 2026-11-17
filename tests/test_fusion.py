@@ -94,3 +94,38 @@ def test_coverage_gaps_catch_a_leaking_presence_flag():
             st.scores["image"] = None
     gaps = coverage_gaps(sts)
     assert len(gaps) == 1 and "raster" in gaps[0] and "0% of forged" in gaps[0]
+
+
+def test_apply_fusion_scores_new_laundering_at_the_saved_thresholds(tmp_path):
+    import importlib.util
+    import pickle
+    from pathlib import Path
+
+    from forgelens.fusion.fuse import fit_final
+
+    statements = _statements()
+    final = fit_final(statements, out_of_fold(statements, folds=5))
+    model = tmp_path / "fusion_x" / "model.pkl"
+    model.parent.mkdir()
+    model.write_bytes(pickle.dumps(final))
+    sig, pages = tmp_path / "s.csv", tmp_path / "p.csv"
+    with open(sig, "w", newline="") as fs, open(pages, "w", newline="") as fp:
+        ws, wp = csv.writer(fs), csv.writer(fp)
+        ws.writerow(["file", "label", "bank_id", "method", "laundering", "error",
+                     "financial_score", "financial_abstained", "structure_score",
+                     "structure_abstained"])
+        wp.writerow(["file", "page", "peak", "area", "error"])
+        for i in range(20):
+            for label, method, peak in (("genuine", "genuine", 0.1), ("forged", "image_splice", 0.9)):
+                name = f"b_{i:06d}__{method}__whatsapp.pdf"
+                ws.writerow([name, label, "b", method, "whatsapp", "", "0.5", "True", "0.5", "True"])
+                wp.writerow([f"/x/{name}", 0, peak, 0.01, ""])
+    spec = importlib.util.spec_from_file_location(
+        "apply_fusion", Path(__file__).resolve().parents[1] / "scripts" / "apply_fusion.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.main(["--model", str(model), "--signals", str(sig), "--image", str(pages),
+                     "--tag", "t", "--out", str(tmp_path)]) == 0
+    text = (tmp_path / "fusion_applied_t.md").read_text()
+    assert "| genuine | whatsapp | 20 |" in text and "| image_splice | whatsapp | 20 |" in text
+    assert "Fused AUC, whatsapp: 1.000" in text

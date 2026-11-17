@@ -26,14 +26,25 @@ def main() -> None:
     parser.add_argument("--masks", action="store_true", help="rewrite masks for forged files")
     parser.add_argument("--tag", default="", help="appended to every output name, so a second "
                         "laundered set gets ids of its own (e.g. _mixq)")
+    parser.add_argument("--per-folder", type=int,
+                        help="launder only this many files from each folder (a seeded sample)")
     parser.add_argument("--jpeg-quality", type=int, nargs="+", default=[85],
                         help="raster JPEG quality; with several, one is chosen per file")
     args = parser.parse_args()
 
     import pymupdf
 
+    paths = sorted(args.input.rglob("*.json"))
+    if args.per_folder:
+        by_folder: dict[Path, list[Path]] = {}
+        for p in paths:
+            by_folder.setdefault(p.parent, []).append(p)
+        paths = []
+        for folder, items in sorted(by_folder.items()):
+            random.Random(stable_seed(args.seed, folder.name)).shuffle(items)
+            paths += sorted(items[:args.per_folder])
     made = 0
-    for json_path in sorted(args.input.rglob("*.json")):
+    for json_path in paths:
         record = json.loads(json_path.read_text())
         pdf = json_path.with_suffix(".pdf")
         if not pdf.exists() or record.get("label") not in ("genuine", "forged"):

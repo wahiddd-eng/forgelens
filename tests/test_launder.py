@@ -97,3 +97,27 @@ def test_unknown_method_is_rejected(files, tmp_path):
     pdf, record, _, _ = files
     with pytest.raises(ValueError):
         launder(pdf, record, tmp_path / "x.pdf", method="photocopy")
+
+
+def test_phone_laundering_screenshot_and_whatsapp(tmp_path):
+    import pymupdf
+    from forgelens.forgery.launder import PHONE_WIDTH
+
+    src = tmp_path / "s.pdf"
+    with pymupdf.open() as doc:
+        page = doc.new_page(width=595, height=842)
+        page.insert_text((72, 72), "Closing balance 1,23,456.78")
+        doc.save(src)
+    record = {"statement_id": "s", "label": "genuine", "generated_on": "2026-11-01"}
+    kinds = {}
+    for method in ("screenshot", "whatsapp"):
+        out = tmp_path / f"{method}.pdf"
+        label = launder(src, record, out, method=method, seed=3)
+        with pymupdf.open(out) as doc:
+            assert doc[0].get_text().strip() == ""  # no text layer left
+            info = doc.extract_image(doc[0].get_images()[0][0])
+            assert info["width"] == PHONE_WIDTH
+            kinds[method] = (info["ext"], label["laundering"]["jpeg_quality"])
+            assert (doc[0].rect.width, doc[0].rect.height) == (595, 842)
+    assert kinds["screenshot"] == ("png", None)
+    assert kinds["whatsapp"][0] == "jpeg" and 60 <= kinds["whatsapp"][1] <= 80

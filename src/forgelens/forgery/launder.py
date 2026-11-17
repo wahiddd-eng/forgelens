@@ -5,8 +5,15 @@
     stays selectable, but the file is rebuilt from scratch: one save section, one content
     stream per page, all fonts embedded and fresh, equal creation and modification dates.
 ``raster``
-    Render every page to a JPEG image and wrap the images in a new PDF, like a screenshot
-    or a scan. The text layer disappears entirely.
+    Render every page to a JPEG image and wrap the images in a new PDF, like a scan. The
+    text layer disappears entirely.
+``screenshot``
+    A phone screenshot of the page: rendered 1080 px wide (a phone screen, about 130 DPI for
+    A4) and kept lossless (PNG), as a screenshot is.
+``whatsapp``
+    That screenshot sent over WhatsApp: the image recompressed as a JPEG of quality 60–80
+    with 4:2:0 chroma subsampling (WhatsApp's "standard quality"; it keeps 1080 px, under
+    its 1600 px limit). The way statements most often reach a lender's staff.
 
 Both are applied to genuine statements as well as forgeries, because applicants often
 re-save genuine statements too. A detector must not treat re-saving itself as forgery.
@@ -22,7 +29,8 @@ import subprocess
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-METHODS = ("reprint", "raster")
+METHODS = ("reprint", "raster", "screenshot", "whatsapp")
+PHONE_WIDTH = 1080  # px: a phone screenshot of a page fitted to the screen width
 
 
 def ghostscript() -> str | None:
@@ -75,6 +83,32 @@ def _raster(src: Path, out: Path, when: datetime, dpi: int, quality: int) -> Non
         new.save(out, garbage=3, deflate=True)
 
 
+def _phone(src: Path, out: Path, when: datetime, jpeg_quality: int | None) -> None:
+    """Screenshot (PNG) or, with ``jpeg_quality``, a screenshot sent over WhatsApp (JPEG)."""
+    import io
+
+    import pymupdf
+    from PIL import Image
+
+    with pymupdf.open(src) as doc, pymupdf.open() as new:
+        for page in doc:
+            zoom = PHONE_WIDTH / page.rect.width
+            pix = page.get_pixmap(matrix=pymupdf.Matrix(zoom, zoom), alpha=False)
+            if jpeg_quality is None:
+                stream = pix.tobytes("png")
+            else:
+                img = Image.frombytes("RGB", (pix.width, pix.height), pix.samples)
+                buf = io.BytesIO()
+                img.save(buf, "JPEG", quality=jpeg_quality, subsampling="4:2:0")
+                stream = buf.getvalue()
+            target = new.new_page(width=page.rect.width, height=page.rect.height)
+            target.insert_image(target.rect, stream=stream)
+        stamp = _pdf_date(when)
+        new.set_metadata({"creationDate": stamp, "modDate": stamp, "producer": "",
+                          "creator": "", "title": "", "author": ""})
+        new.save(out, garbage=3, deflate=True)
+
+
 def launder(src_pdf: str | Path, record: dict, out_pdf: str | Path, *, method: str,
             seed: int = 0, dpi: int = 150, jpeg_quality: int = 85) -> dict:
     """Write a laundered copy of ``src_pdf`` and return its updated label record.
@@ -90,8 +124,12 @@ def launder(src_pdf: str | Path, record: dict, out_pdf: str | Path, *, method: s
     when = _laundered_at(record, rng)
     if method == "reprint":
         _reprint(src_pdf, out_pdf, when)
-    else:
+    elif method == "raster":
         _raster(src_pdf, out_pdf, when, dpi, jpeg_quality)
+    else:
+        if method == "whatsapp":
+            jpeg_quality = rng.randint(60, 80)
+        _phone(src_pdf, out_pdf, when, jpeg_quality if method == "whatsapp" else None)
 
     laundered = copy.deepcopy(record)
     laundered.pop("layout", None)  # text positions are no longer guaranteed
@@ -105,7 +143,8 @@ def launder(src_pdf: str | Path, record: dict, out_pdf: str | Path, *, method: s
             "seed": seed,
             "laundered_at": when.isoformat(),
             "dpi": dpi if method == "raster" else None,
-            "jpeg_quality": jpeg_quality if method == "raster" else None,
+            "width_px": PHONE_WIDTH if method in ("screenshot", "whatsapp") else None,
+            "jpeg_quality": jpeg_quality if method in ("raster", "whatsapp") else None,
             "tool": "ghostscript" if method == "reprint" else "pymupdf",
         },
     })

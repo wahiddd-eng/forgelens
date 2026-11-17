@@ -215,6 +215,14 @@ and the image model with each signal alone; `experiments/results/ablations_test-
 ~/forgelens-data/synthetic_test` (which forgeries are missed, and how many leave no trace any
 signal can read; `misses.md` in the run folder).
 
+### Phone laundering (about 1.5 hours, two GPUs)
+
+`bash scripts/queue_phone_test.sh 2>&1 | tee ~/night9.log` makes 500 test statements into
+phone screenshots and 500 into screenshots sent over WhatsApp, runs ft4, OCR arithmetic and
+the rule-based signals on them, and applies the fusion model fitted on the test set unchanged
+(`scripts/apply_fusion.py`): `experiments/results/fusion_applied_phone-ft4.md`. Run it after
+`run_fusion.sh`, and when no other GPU job of ours is running (it uses two).
+
 ## Real statements
 
 Real statements may come to the DGX only for the length of one run, and are deleted by it.
