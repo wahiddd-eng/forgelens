@@ -44,3 +44,15 @@ Fusion with ft4 needs one more run: test-ft4 covered the rasterised genuine stat
 not the rasterised PDF edits and rebuilds, so a fusion model could read the label off whether
 an image score exists. `fuse_signals.py` now refuses such uneven coverage, and
 `queue_ft5.sh` first runs ft4 on the missing folders.
+
+## DocTamper (in-domain, 17 Nov 2026, code 1b37d18)
+
+| Set | Images | ft4 F1 (95% CI) | Published (released model) | Δ |
+| --- | ---: | --- | ---: | ---: |
+| FCD | 2,000 | 0.735 (0.721–0.749) | 0.803 | −0.068 |
+| SCD | 18,000 | 0.689 (0.684–0.693) | 0.718 | −0.029 |
+| Test | 30,000 | 0.770 (0.766–0.773) | 0.791 | −0.021 |
+| Mean | | **0.731** | 0.771 | −0.040 |
+
+ft4 keeps 95% of the released model's DocTamper score (ft1: 0.750), so fine-tuning on bank
+statements costs little on the data the model was built for. The largest drop is on FCD.
