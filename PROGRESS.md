@@ -166,6 +166,8 @@ ft5, 16 Nov 2026 (`experiments/results/adcdnet_ft5.md`): ft3 and ft4 data togeth
 
 OCR arithmetic, 16 Nov 2026: on the first test-set run it flagged 49% of genuine rasterised statements. Rules for the misreads found by `scripts/diagnose_ocr_breaks.py` (missed amounts, lost leading digits, one-digit misreads, truncated balances) bring that to 2.5% (5 of 200) while flagging 47% of rasterised PDF edits. Fused (boosting) with ft4 and OCR: 62% of all forgeries at 1% false alarms, 71% at 5%. The score is now graded by the size of the largest break, so that the 1% threshold can separate small leftover misreads from edits. Result (17 Nov): OCR alone catches 24% of all forgeries at 1% false alarms (was 0%) and 46% of rasterised PDF edits; fused with ft4, **69% of all forgeries at 1% false alarms** (was 62%), 71% at 5%. ft4 on DocTamper: mean F1 0.731 (published 0.771).
 
+Ablations and misses, 17 Nov 2026 (`experiments/results/ablations_test.md`): the image model, template and OCR arithmetic carry fusion (69% → 50%, 60%, 61% without each); financial, PDF structure and the released model are redundant on the test set (the template, fitted on the same banks, catches the same digital edits; on unseen banks PDF structure takes that role). 26% of the test forgeries are consistent edits or rebuilds that were rasterised and leave no trace any signal reads; of the other 74%, fusion catches 89% at 1% false alarms.
+
 **0th review:** held by 14 Nov 2026. Guide feedback still to be recorded below.
 
 **Guide (15 Nov 2026, after the progress email):** no consent forms are needed for real statements; collect them from friends and family.
