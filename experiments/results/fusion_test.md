@@ -46,3 +46,32 @@ model.
 Caveats: synthetic statements from the same generator and banks as training; the image
 model was not run on the digital test files (it is at chance on PDF edits there, see
 `adcdnet_pages_v4.md`, so its column would change little); real statements next.
+
+## With ft4 and the OCR arithmetic signal (17 Nov 2026)
+
+Image model ft4 (the model kept), the released model, and the OCR arithmetic signal after the
+misread rules and the size-graded score (code 2902c76). Same 400 genuine and 1,196 forged
+statements; one threshold at 1% of all genuine statements.
+
+| Forgery | Laundering | n | Image (ft4) | Image (released) | Financial | PDF structure | Template | OCR arithmetic | Fused (logistic) | Fused (boosting) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| image_inpaint | raster | 200 | 100% | 2% | 0% | 0% | 0% | 47% | 56% | 100% |
+| image_splice | raster | 200 | 100% | 2% | 0% | 0% | 0% | 48% | 78% | 100% |
+| pdf_edit | none | 200 | 0% | 0% | 46% | 100% | 100% | 0% | 100% | 100% |
+| pdf_edit | raster | 200 | 2% | 2% | 0% | 0% | 0% | 46% | 31% | **45%** |
+| rebuild | none | 198 | 0% | 0% | 0% | 0% | 58% | 0% | 58% | 58% |
+| rebuild | raster | 198 | 3% | 5% | 0% | 0% | 0% | 5% | 4% | 13% |
+| **All forgeries** | | 1,196 | 34% | 2% | 8% | 17% | 26% | 24% | 55% | **69%** |
+| False alarms | | 400 | 1% | 1% | 0% | 0% | 0% | 1% | 1% | 1% |
+| AUC | | | 0.668 | 0.587 | 0.642 | 0.678 | 0.781 | 0.598 | 0.880 | 0.881 |
+
+At 5% false alarms: fused (boosting) 71%, OCR arithmetic alone 25%.
+
+The OCR signal, before the 16 Nov fixes, flagged 49% of genuine rasterised statements and
+caught nothing at 1% false alarms; now it catches 24% of all forgeries alone, and 46% of the
+rasterised PDF edits, which no other signal sees. Fusion rises from 62% to **69%** at 1% false
+alarms. With ft5 instead of ft4: 70% (73% at 5%), the same within noise; ft4 is kept for its
+localisation and AIForge-Doc false alarms (`adcdnet_ft5.md`).
+
+What is still missed: rasterised rebuilds (87%), digital rebuilds (42%; only the template
+sees them) and the rasterised PDF edits whose balances the forger kept consistent.
