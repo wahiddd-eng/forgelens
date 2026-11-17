@@ -56,3 +56,19 @@ an image score exists. `fuse_signals.py` now refuses such uneven coverage, and
 
 ft4 keeps 95% of the released model's DocTamper score (ft1: 0.750), so fine-tuning on bank
 statements costs little on the data the model was built for. The largest drop is on FCD.
+
+## Doc Protocol cross-domain sets (17 Nov 2026, code 84776cd)
+
+| Set | Images | ft4 F1 (95% CI) | Published (released model) | Δ |
+| --- | ---: | --- | ---: | ---: |
+| T-SROIE | 1,579 | 0.717 (0.704–0.730) | 0.623 | **+0.094** |
+| OSTF | 3,046 | 0.392 (0.379–0.405) | 0.441 | −0.049 |
+| TPIC-13 | 589 | 0.521 (0.491–0.551) | 0.579 | −0.058 |
+| RTM | 3,444 | 0.121 (0.113–0.130) | 0.159 | −0.038 |
+| Mean | | **0.438** | 0.450 | −0.012 |
+
+Across the four cross-domain sets ft4 is within 0.012 of the released model on average. It is
+better on T-SROIE (tampered receipts, printed text much like a statement) and slightly worse on
+scene text (OSTF), photographed documents (TPIC-13) and real manual tampering (RTM). With
+DocTamper (mean 0.731, published 0.771), fine-tuning on bank statements costs 0.04 in-domain and
+almost nothing cross-domain.
