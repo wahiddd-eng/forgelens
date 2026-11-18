@@ -49,3 +49,4 @@ configs/*.yaml
 experiments/results/adcdnet_*/
 # fusion runs (statements.csv, model.pkl); their summaries are copied into fusion_*.md
 experiments/results/fusion_*/
+experiments/results/real_*_diagnostics.json

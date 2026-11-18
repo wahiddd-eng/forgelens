@@ -59,4 +59,5 @@ CONFIG=configs/adcdnet_$MODEL.yaml
 G=$(bash scripts/free_gpus.sh 1 --wait) || die "no GPU"
 echo "==> ForgeLens on $(ls "$R"/*.pdf 2>/dev/null | wc -l) statements, image model $MODEL on GPU $G"
 CUDA_VISIBLE_DEVICES=$G python scripts/eval_real.py --folder "$R" --fusion "$F" \
-    --config "$CONFIG" --summary "experiments/results/real_$DATE.md"
+    --config "$CONFIG" --summary "experiments/results/real_$DATE.md" \
+    --diagnostics "experiments/results/real_${DATE}_diagnostics.json"

@@ -38,6 +38,9 @@ def parse_args(argv=None):
     p.add_argument("--summary", type=Path, required=True)
     p.add_argument("--dpi", type=int, default=150)
     p.add_argument("--device", default="cuda")
+    p.add_argument("--diagnostics", type=Path,
+                   help="also write per-statement diagnostics here (how each file is built and "
+                        "parsed, which checks fired; no text, dates or amounts)")
     return p.parse_args(argv)
 
 
@@ -106,8 +109,9 @@ def main(argv=None) -> int:
 
         ocr = OcrReader(gpu=args.device != "cpu")
 
-    rows, statements = [], []
+    rows, statements, diagnostics = [], [], {}
     for pdf, bank, password in files:
+        fin = struct = rep = None
         row = {"id": pdf.stem, "bank": bank, "error": "", "checks": ""}
         st = Statement(pdf.name, "genuine", "real", "none", bank, pdf.stem)
         try:
@@ -140,12 +144,29 @@ def main(argv=None) -> int:
         except Exception:  # noqa: BLE001 - one bad file must not stop the run
             row["error"] = "unreadable"  # (no message: it could quote the file's contents)
         st.scores.setdefault("template", None)
+        if args.diagnostics and not row["error"]:
+            from forgelens.evaluation.real_diagnostics import diagnose
+
+            try:
+                diagnostics[pdf.stem] = {"bank": bank, **diagnose(
+                    pdf, password, fin, struct, rep, st.scores.get("image"))}
+            except Exception as exc:  # noqa: BLE001
+                diagnostics[pdf.stem] = {"bank": bank, "error": type(exc).__name__}
         rows.append(row)
         statements.append(st)
         print(f"  {pdf.stem}: {'error: ' + row['error'] if row['error'] else 'done'}",
               flush=True)
 
     summary = summarise(rows, statements, final, detector is not None)
+    if args.diagnostics:
+        for r in rows:
+            if r["id"] in diagnostics:
+                diagnostics[r["id"]]["fused"] = r.get("fused")
+                diagnostics[r["id"]]["scores"] = {
+                    k: v for k, v in statements[rows.index(r)].scores.items() if v is not None}
+        args.diagnostics.parent.mkdir(parents=True, exist_ok=True)
+        args.diagnostics.write_text(json.dumps(diagnostics, indent=1, default=str))
+        print(f"Diagnostics: {args.diagnostics}")
     summary["fusion_model"] = str(args.fusion)
     args.summary.parent.mkdir(parents=True, exist_ok=True)
     args.summary.with_suffix(".json").write_text(json.dumps(summary, indent=2, default=list))
