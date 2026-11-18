@@ -223,6 +223,12 @@ the rule-based signals on them, and applies the fusion model fitted on the test 
 (`scripts/apply_fusion.py`): `experiments/results/fusion_applied_phone-ft4.md`. Run it after
 `run_fusion.sh`, and when no other GPU job of ours is running (it uses two).
 
+### ft6: phone copies in training (about 5 hours)
+
+`bash scripts/queue_ft6.sh 2>&1 | tee ~/night11.log` launders ft4's training statements into
+screenshots and WhatsApp copies, trains ft6 from ft4 for 6,000 steps (one GPU), tests it on the
+phone copies, the rasterised test set and AIForge-Doc, and refits fusion with the phone copies.
+
 ## Real statements
 
 Real statements may come to the DGX only for the length of one run, and are deleted by it.

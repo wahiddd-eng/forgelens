@@ -37,3 +37,28 @@ one could use. Likely cause, being tested: the 1080 px JPEG is resampled when th
 re-rendered at 150 DPI, which smears its 8x8 compression blocks into a pattern the model reads
 as tampering. `scripts/queue_phone_native.sh` reads such pages at their own pixels and refits
 fusion with phone copies included.
+
+## Read at their own pixels (`--native`), 18 Nov 2026
+
+`scripts/queue_phone_native.sh`, code b4c9b08. Same 1,000 statements; the image model reads
+image-only pages without re-rendering them.
+
+| Statements | Laundering | Image, re-rendered | Image, native | Fused (test-set model), re-rendered | Fused, native |
+| --- | --- | ---: | ---: | ---: | ---: |
+| genuine | screenshot | 2% | 11% | 9% | 18% |
+| genuine | whatsapp | 37% | **20%** | 73% | **50%** |
+| image forgeries | screenshot | 90–93% | 84% | 96–97% | 90–91% |
+| image forgeries | whatsapp | 85–88% | 81% | 99% | 93–94% |
+
+Fused AUC: screenshot 0.782 → 0.771, WhatsApp 0.673 → 0.709. Native reading halves the false
+alarms on WhatsApp copies but doubles them on screenshots: resampling the JPEG is part of the
+problem, the other part is that ft4 has never seen pages at a phone's resolution (1080 px wide,
+about 130 DPI, against 150 DPI in training) or with WhatsApp's compression.
+
+**Fusion refitted with the phone copies** (out-of-fold, 600 genuine statements, one threshold at
+1%): 54% of all 1,996 forgeries caught (63% at 5%), against 69% on the test set without phone
+copies. Image forgeries on phone copies 63–79%, PDF edits 7–19%, rebuilds 1–8%. Calibrating
+the fusion alone does not recover the image model.
+
+Next: ft6, ft4 trained further on screenshot and WhatsApp copies of its own training
+statements (`scripts/queue_ft6.sh`).
