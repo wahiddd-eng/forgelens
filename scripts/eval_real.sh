@@ -8,7 +8,7 @@
 # deletes the folder when it ends, whether the run succeeds or not.
 #
 #   mkdir -m 700 ~/real_statements                # then copy the PDFs in from the Mac
-#   bash scripts/eval_real.sh                      # ~/real_statements, ft3, delete after
+#   bash scripts/eval_real.sh                      # ~/real_statements, ft4, delete after
 #   KEEP=1 bash scripts/eval_real.sh               # keep the folder (e.g. to fix a password)
 #
 # The folder holds S001.pdf, S002.pdf, ... and statements.tsv (file<TAB>bank<TAB>password).
@@ -17,7 +17,7 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 R="${1:-$HOME/real_statements}"
-MODEL="${MODEL:-ft3}"
+MODEL="${MODEL:-ft4}"
 DATE=$(date +%Y%m%d-%H%M)
 
 die() { echo "eval_real: $*" >&2; exit 1; }

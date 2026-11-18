@@ -232,7 +232,8 @@ Real statements may come to the DGX only for the length of one run, and are dele
    in names), write `statements.tsv` beside them (one line per file:
    `S001.pdf<TAB>bank name<TAB>password`, password empty when there is none), and copy them over:
    `scp S*.pdf statements.tsv srmist32@172.16.0.32:~/real_statements/`
-3. On the DGX: `bash scripts/eval_real.sh`. It refuses a folder that others can read or whose
+3. On the DGX: `bash scripts/eval_real.sh` (image model ft4; statements with a text layer are fused
+   without the image and OCR scores, as in training, but those scores are still reported alone). It refuses a folder that others can read or whose
    name does not start with `real` (the backup skips those), saves no page pictures, writes
    only counts, bank names and file IDs to `experiments/results/real_<date>.md`, and deletes
    `~/real_statements` when it ends, also when it fails (`KEEP=1` keeps it, e.g. to fix a

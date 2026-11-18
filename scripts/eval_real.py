@@ -127,10 +127,10 @@ def main(argv=None) -> int:
                 rep = check_pdf(pdf, ocr, args.dpi, password)
                 st.scores["ocr_financial"] = None if rep.abstained else rep.score
             if detector is not None:
-                from forgelens.signals.image.pages import page_scores, render_pages
+                from forgelens.signals.image.pages import page_scores, render_pages_native
 
                 peaks, areas = [], []
-                for rgb in render_pages(pdf, dpi=args.dpi, password=password):
+                for rgb, _ in render_pages_native(pdf, dpi=args.dpi, password=password):
                     s = page_scores(detector.predict(rgb).prob)
                     peaks.append(s["peak"])
                     areas.append(s["area"])
@@ -155,6 +155,23 @@ def main(argv=None) -> int:
     return 0
 
 
+def for_fusion(st, row: dict):
+    """The statement as the fusion model saw such statements in training: on the test set the
+    image model and OCR arithmetic were run only on image-only (rasterised) statements, so a
+    statement with a text layer is fused without them. Their own scores still count below,
+    as single signals."""
+    import copy
+
+    if row.get("image_only"):
+        return st
+    st = copy.deepcopy(st)
+    for s in ("image", "image_released", "ocr_financial"):
+        if s in st.scores:
+            st.scores[s] = None
+    st.image_area = None
+    return st
+
+
 def summarise(rows: list[dict], statements: list, final: dict, image_signal: bool) -> dict:
     """False-alarm counts per signal and for the fused verdict, at the thresholds the fusion
     model was saved with. ``rows``: id, bank, error, checks (and image_only) per statement;
@@ -162,7 +179,7 @@ def summarise(rows: list[dict], statements: list, final: dict, image_signal: boo
     from forgelens.fusion.fuse import apply_final
 
     ok = [i for i, r in enumerate(rows) if not r["error"]]
-    fused = apply_final(final, [statements[i] for i in ok]) if ok else []
+    fused = apply_final(final, [for_fusion(statements[i], rows[i]) for i in ok]) if ok else []
     for i, f in zip(ok, fused, strict=True):
         rows[i]["fused"] = f
     names = [s for s in final["signals"] if s != "template"] + ["fused_boosting"]

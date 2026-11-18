@@ -76,3 +76,22 @@ def test_eval_real_refuses_a_template_model(tmp_path):
     with pytest.raises(SystemExit, match="template"):
         _script().main(["--folder", str(tmp_path), "--fusion", str(model),
                         "--summary", str(tmp_path / "s.md")])
+
+
+def test_text_statements_are_fused_without_image_and_ocr_scores():
+    import importlib.util
+    from pathlib import Path
+
+    from forgelens.fusion.fuse import Statement
+
+    spec = importlib.util.spec_from_file_location(
+        "eval_real", Path(__file__).resolve().parents[1] / "scripts" / "eval_real.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    st = Statement("S001.pdf", "genuine", "real", "none", "b", "S001")
+    st.scores = {"financial": 0.0, "structure": 0.1, "image": 0.9, "ocr_financial": 0.7}
+    st.image_area = 0.01
+    text = mod.for_fusion(st, {"image_only": False})
+    assert text.scores["image"] is None and text.scores["ocr_financial"] is None
+    assert st.scores["image"] == 0.9  # the original keeps its scores for the single signals
+    assert mod.for_fusion(st, {"image_only": True}) is st
