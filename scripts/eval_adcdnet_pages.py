@@ -54,6 +54,9 @@ def parse_args(argv=None):
                    "(e.g. a fine-tuned one from train_adcdnet.py)")
     p.add_argument("--out", type=Path, default=REPO / "experiments" / "results")
     p.add_argument("--dpi", type=int, default=150, help="page rendering resolution")
+    p.add_argument("--native", action="store_true",
+                   help="read image-only pages (scans, screenshots) at their own pixels instead "
+                        "of re-rendering them at --dpi")
     p.add_argument("--device", default="cuda")
     p.add_argument("--precision", choices=["fp16", "fp32"], default="fp16")
     p.add_argument("--batch-size", type=int, default=16, help="tiles per forward pass")
@@ -234,6 +237,7 @@ def main(argv=None) -> int:
         ocr_mask,
         page_scores,
         render_pages,
+        render_pages_native,
     )
 
     run_dir = args.out / f"adcdnet_pages_{args.tag}"
@@ -252,7 +256,7 @@ def main(argv=None) -> int:
     run.update(upstream_commit=adcdnet.upstream_commit(paths.upstream),
                ckpt=str(paths.ckpt), ckpt_sha256=adcdnet.sha256(paths.ckpt),
                fine_tuned=args.ckpt is not None, environment=adcdnet.environment(),
-               settings={"dpi": args.dpi, "tile": 512, "stride": 384,
+               settings={"dpi": args.dpi, "native": args.native, "tile": 512, "stride": 384,
                          "precision": args.precision, "limit": args.limit,
                          "banks": args.banks})
 
@@ -269,14 +273,17 @@ def main(argv=None) -> int:
             base = {"file": str(pdf), "label": label, "method": method,
                     "laundering": laundering, "bank_id": record.get("bank_id", "")}
             try:
-                pages = render_pages(pdf, args.dpi)
+                if args.native:
+                    pages_dpi = render_pages_native(pdf, args.dpi)
+                else:
+                    pages_dpi = [(rgb, float(args.dpi)) for rgb in render_pages(pdf, args.dpi)]
             except Exception as exc:  # noqa: BLE001 - recorded, the run continues
                 writer.writerow({**base, "page": -1, "error": f"{type(exc).__name__}: {exc}"})
                 continue
-            for page_no, rgb in enumerate(pages):
+            for page_no, (rgb, page_dpi) in enumerate(pages_dpi):
                 if (str(pdf), page_no) in done:
                     continue
-                gt = edit_mask(record.get("edits") or [], page_no, rgb.shape[:2], args.dpi)
+                gt = edit_mask(record.get("edits") or [], page_no, rgb.shape[:2], page_dpi)
                 result = detector.predict(rgb, ocr_mask(rgb))
                 pred = result.prob > 0.5
                 c = PixelCounts(int((pred & (gt > 0)).sum()), int(pred.sum()), int(gt.sum()))

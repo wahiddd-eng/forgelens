@@ -41,7 +41,51 @@ def render_pages(pdf: str | Path, dpi: int = 150, password: str | None = None) -
     return pages
 
 
-def edit_mask(edits: list[dict], page: int, shape: tuple[int, int], dpi: int) -> np.ndarray:
+def _full_page_image(doc, page) -> np.ndarray | None:
+    """The page's own pixels when the page is nothing but one image covering it (a scan,
+    screenshot or WhatsApp copy wrapped in a PDF), decoded without resampling; else None.
+
+    Re-rendering such a page at a fixed DPI resamples it, which smears the image's JPEG
+    blocks across the 8x8 grid the detector expects; reading the pixels directly keeps it.
+    """
+    import io
+
+    from PIL import Image
+
+    images = page.get_images(full=True)
+    if len(images) != 1 or page.get_text("text").strip():
+        return None
+    xref = images[0][0]
+    rects = page.get_image_rects(xref)
+    if len(rects) != 1 or rects[0].get_area() < 0.98 * page.rect.get_area():
+        return None
+    data = doc.extract_image(xref)
+    if not data or not data.get("image"):
+        return None
+    img = Image.open(io.BytesIO(data["image"])).convert("RGB")
+    return np.asarray(img).copy()
+
+
+def render_pages_native(pdf: str | Path, dpi: int = 150,
+                        password: str | None = None) -> list[tuple[np.ndarray, float]]:
+    """Every page as (RGB array, its resolution in DPI): image-only pages at their own pixels
+    (see ``_full_page_image``), other pages rendered at ``dpi``."""
+    from forgelens.reader import open_pdf
+
+    out = []
+    with open_pdf(pdf, password) as doc:
+        for page in doc:
+            img = _full_page_image(doc, page)
+            if img is not None:
+                out.append((img, img.shape[1] * 72.0 / page.rect.width))
+                continue
+            pix = page.get_pixmap(dpi=dpi, alpha=False)
+            arr = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+            out.append((arr[:, :, :3].copy(), float(dpi)))
+    return out
+
+
+def edit_mask(edits: list[dict], page: int, shape: tuple[int, int], dpi: float) -> np.ndarray:
     """0/1 mask of the regions edited on ``page`` (labels give boxes in PDF points)."""
     mask = np.zeros(shape, np.uint8)
     scale = dpi / 72.0

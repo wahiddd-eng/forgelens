@@ -121,3 +121,20 @@ def test_phone_laundering_screenshot_and_whatsapp(tmp_path):
             assert (doc[0].rect.width, doc[0].rect.height) == (595, 842)
     assert kinds["screenshot"] == ("png", None)
     assert kinds["whatsapp"][0] == "jpeg" and 60 <= kinds["whatsapp"][1] <= 80
+
+
+def test_native_reading_keeps_the_pixels_of_image_only_pages(tmp_path):
+    from forgelens.signals.image.pages import render_pages_native
+
+    src = tmp_path / "s.pdf"
+    with pymupdf.open() as doc:
+        page = doc.new_page(width=595, height=842)
+        page.insert_text((72, 72), "Closing balance 1,23,456.78")
+        doc.save(src)
+    record = {"statement_id": "s", "label": "genuine", "generated_on": "2026-11-01"}
+    out = tmp_path / "w.pdf"
+    launder(src, record, out, method="whatsapp", seed=3)
+    (img, dpi), = render_pages_native(out, dpi=150)
+    assert img.shape[1] == 1080 and abs(dpi - 1080 * 72 / 595) < 1e-6
+    (img, dpi), = render_pages_native(src, dpi=150)  # a text page is rendered as before
+    assert dpi == 150.0 and img.shape[1] == round(595 * 150 / 72)
