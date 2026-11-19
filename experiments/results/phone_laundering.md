@@ -62,3 +62,32 @@ the fusion alone does not recover the image model.
 
 Next: ft6, ft4 trained further on screenshot and WhatsApp copies of its own training
 statements (`scripts/queue_ft6.sh`).
+
+## ft6: phone copies in training (18–19 Nov 2026)
+
+`scripts/queue_ft6.sh`, code 0387a94. ft6 = ft4 + 6,000 steps on ft4's own training statements
+plus their screenshot and WhatsApp copies (`train_ft6/Step2000_Score0.8636.pth`, sha256
+041189989ec2). Pages re-rendered at 150 DPI. Thresholds per laundering (genuine statements of
+the same kind):
+
+| Laundering | Forgery | ft6 AUC | ft6 caught @1% | ft6 caught @5% | F1 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| raster (test set) | AI inpainting | 1.000 | 100% | 100% | 0.726 |
+| raster (test set) | splice | 0.999 | 99% | 100% | 0.709 |
+| screenshot | AI inpainting | 0.991 | **96%** | 97% | 0.700 |
+| screenshot | splice | 0.988 | **95%** | 95% | 0.649 |
+| whatsapp | AI inpainting | 0.945 | **73%** | 80% | 0.558 |
+| whatsapp | splice | 0.927 | **75%** | 83% | 0.524 |
+| any phone copy | PDF edit, rebuild | 0.48–0.56 | 1–10% | 3–14% | – |
+
+AIForge-Doc: F1 0.072 (ft4 0.076), authentic images flagged 3.9% (ft4 1.6%).
+
+Fusion refitted with phone copies (out-of-fold, one threshold for all 600 genuine): 58% of all
+1,996 forgeries at 1% false alarms (ft4: 54%), 67% at 5% (ft4: 63%).
+
+**Reading.** On the rasterised test set ft6 detects as well as ft4 (localisation F1 0.71–0.73
+against 0.79). On phone copies, with a threshold set for that kind of copy, it catches 95–96% of
+image forgeries in screenshots and 73–75% in WhatsApp copies. WhatsApp compression still
+costs a quarter of them. One threshold for every kind of copy wastes this: the per-kind
+thresholds need the system to know what kind of copy it has, which the file itself shows (an
+image-only page, its pixel width, PNG or JPEG).
