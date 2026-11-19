@@ -62,6 +62,12 @@ def _evaluate(pdf: Path, record: dict, matcher: TemplateMatcher | None) -> tuple
         "font_strategy": forgery.get("font_strategy", ""),
         "error": "",
     }
+    try:
+        from forgelens.fusion.copy_kind import copy_kind
+
+        row["copy_kind"] = copy_kind(pdf)
+    except Exception:  # noqa: BLE001
+        row["copy_kind"] = ""
     located: dict[str, list[dict]] = {}
     try:
         fin = check_statement(pdf)

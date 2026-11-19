@@ -115,6 +115,13 @@ def main(argv=None) -> int:
         row = {"id": pdf.stem, "bank": bank, "error": "", "checks": ""}
         st = Statement(pdf.name, "genuine", "real", "none", bank, pdf.stem)
         try:
+            from forgelens.fusion.copy_kind import copy_kind
+
+            st.kind = copy_kind(pdf, password)
+        except Exception:  # noqa: BLE001 - a locked file fails below with its own message
+            pass
+        row["kind"] = st.kind
+        try:
             fin = check_statement(pdf, password)
             struct = analyze_pdf(pdf, password)
             if struct.error:  # the signals report a locked or damaged file instead of raising
@@ -197,7 +204,7 @@ def summarise(rows: list[dict], statements: list, final: dict, image_signal: boo
     """False-alarm counts per signal and for the fused verdict, at the thresholds the fusion
     model was saved with. ``rows``: id, bank, error, checks (and image_only) per statement;
     ``statements``: their scores (``fusion.Statement``)."""
-    from forgelens.fusion.fuse import apply_final
+    from forgelens.fusion.fuse import apply_final, threshold_for
 
     ok = [i for i, r in enumerate(rows) if not r["error"]]
     fused = apply_final(final, [for_fusion(statements[i], rows[i]) for i in ok]) if ok else []
@@ -208,6 +215,7 @@ def summarise(rows: list[dict], statements: list, final: dict, image_signal: boo
                "errors": Counter(r["error"] for r in rows if r["error"]),
                "banks": Counter(r["bank"] for r in rows),
                "image_only": sum(bool(r.get("image_only")) for r in rows),
+               "kinds": Counter(r.get("kind", "digital") for r in rows),
                "image_signal": image_signal, "flagged": {}, "by_bank": defaultdict(dict),
                "checks_fired": Counter(c for r in rows for c in r["checks"].split(";") if c)}
     for fpr in (0.01, 0.05):
@@ -218,7 +226,8 @@ def summarise(rows: list[dict], statements: list, final: dict, image_signal: boo
             flagged = []
             for i in ok:
                 v = rows[i]["fused"] if name == "fused_boosting" else statements[i].scores.get(name)
-                if v is not None and v > t:
+                ti = threshold_for(final, statements[i].kind, fpr) if name == "fused_boosting" else t
+                if v is not None and v > ti:
                     flagged.append(i)
             assessed = [i for i in ok if name == "fused_boosting"
                         or statements[i].scores.get(name) is not None]

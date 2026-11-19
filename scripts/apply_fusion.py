@@ -72,9 +72,20 @@ def main(argv=None) -> int:
              "abstained counts as not flagged.", "",
              "| Statements | Laundering | n | " + " | ".join(names) + " |",
              "| --- | --- | ---: | " + " | ".join("---:" for _ in names) + " |"]
+    from forgelens.fusion.fuse import threshold_for
+
+    if final.get("thresholds_by_kind"):
+        names = names + ["fused_per_kind"]
+        lines[-2] = "| Statements | Laundering | n | " + " | ".join(names) + " |"
+        lines[-1] = "| --- | --- | ---: | " + " | ".join("---:" for _ in names) + " |"
     for (kind, laundering), idx in sorted(groups.items(), key=lambda kv: (kv[0][0] != "genuine", kv[0])):
         cells = []
         for n in names:
+            if n == "fused_per_kind":
+                c1 = sum(fused[i] > threshold_for(final, statements[i].kind, 0.01) for i in idx) / len(idx)
+                c5 = sum(fused[i] > threshold_for(final, statements[i].kind, 0.05) for i in idx) / len(idx)
+                cells.append(f"{pct(c1)} ({pct(c5)})")
+                continue
             t = th if n == "fused_boosting" else final["thresholds"].get(n) or {}
             if not t:
                 cells.append("–")

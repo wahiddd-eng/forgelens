@@ -83,6 +83,20 @@ def markdown(result: dict, args, missing_image: int) -> str:
         "–" if o[n]["auc"] is None else f"{o[n]['auc']:.3f}" for n in names) + " |")
     lines += ["", "At 5% false alarms, all forgeries: " + ", ".join(
         f"{NAMES[n]} {pct(o[n]['caught@0.05'])}" for n in names) + "."]
+    pk = (result.get("per_kind") or {}).get("fused_boosting")
+    if pk and len(pk.get("kinds", [])) > 1:
+        lines += ["", "**Threshold per kind of copy** (" + ", ".join(pk["kinds"]) + "; each kind's "
+                  "genuine statements flagged at 1%): fused (boosting) catches "
+                  f"**{pct(pk['caught@0.01'])}** of all forgeries at 1% "
+                  f"({pct(pk['false_alarms@0.01'])} of all genuine flagged), "
+                  f"{pct(pk['caught@0.05'])} at 5%.", "",
+                  "| Forgery | Laundering | n | Fused, one threshold | Fused, threshold per kind |",
+                  "| --- | --- | ---: | ---: | ---: |"]
+        for kind, row in sorted(result["by_kind"].items()):
+            method, laundering = kind.split("|")
+            lines.append(f"| {method} | {laundering} | {row['n']} | "
+                         f"{pct(row.get('fused_boosting@0.01'))} | "
+                         f"{pct(row.get('fused_boosting_per_kind@0.01'))} |")
     return "\n".join(lines) + "\n"
 
 
@@ -115,10 +129,10 @@ def main(argv=None) -> int:
     out.mkdir(parents=True, exist_ok=True)
     with open(out / "statements.csv", "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["file", "label", "method", "laundering", "bank_id", *SINGLE,
+        w.writerow(["file", "label", "method", "laundering", "kind", "bank_id", *SINGLE,
                     "image_area", *FUSED])
         for i, st in enumerate(statements):
-            w.writerow([st.file, st.label, st.method, st.laundering, st.bank,
+            w.writerow([st.file, st.label, st.method, st.laundering, st.kind, st.bank,
                         *("" if st.scores.get(s) is None else st.scores[s] for s in SINGLE),
                         "" if st.image_area is None else st.image_area,
                         *(round(fused[f][i], 5) for f in FUSED)])

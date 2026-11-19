@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import csv
 import math
+
+from forgelens.fusion.copy_kind import FROM_LAUNDERING
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -52,6 +54,7 @@ class Statement:
     group: str  # source statement: a genuine statement and its forgeries share it
     scores: dict[str, float | None] = field(default_factory=dict)  # None = abstained/missing
     image_area: float | None = None
+    kind: str = "digital"  # what kind of copy the file is (copy_kind.py)
 
     @property
     def forged(self) -> bool:
@@ -85,6 +88,7 @@ def load_signals(paths: list[Path]) -> dict[str, Statement]:
                                method=row.get("method") or "genuine",
                                laundering=row.get("laundering") or "none",
                                bank=row.get("bank_id", ""), group=source_of(row["file"]))
+                st.kind = row.get("copy_kind") or FROM_LAUNDERING.get(st.laundering, "scan")
                 for s in PDF_SIGNALS:
                     if f"{s}_score" not in row or row[f"{s}_score"] == "":
                         st.scores[s] = None  # not run (e.g. no template profiles)
@@ -252,8 +256,33 @@ def fit_final(statements: list[Statement], fused: dict[str, list[float]],
     for s in signals:
         g = [statements[i].scores[s] for i in genuine if statements[i].scores.get(s) is not None]
         thresholds[s] = {f: threshold_at(g, f) for f in fprs} if g else {}
+    by_kind = per_kind_thresholds(statements, fused["fused_boosting"], fprs)
     return {"model": model, "signals": signals, "use_area": use_area,
-            "thresholds": thresholds, "trained_on": len(statements)}
+            "thresholds": thresholds, "thresholds_by_kind": by_kind,
+            "trained_on": len(statements)}
+
+
+MIN_GENUINE_PER_KIND = 50  # fewer genuine statements of a kind: use the overall threshold
+
+
+def per_kind_thresholds(statements: list[Statement], scores: list[float],
+                        fprs: tuple[float, ...] = (0.01, 0.05)) -> dict[str, dict[float, float]]:
+    """For each kind of copy with enough genuine statements, the threshold that flags ``fpr``
+    of the genuine statements of that kind."""
+    out = {}
+    for kind in sorted({st.kind for st in statements}):
+        g = [scores[i] for i, st in enumerate(statements) if st.kind == kind and not st.forged]
+        if len(g) >= MIN_GENUINE_PER_KIND:
+            out[kind] = {f: threshold_at(g, f) for f in fprs}
+    return out
+
+
+def threshold_for(final: dict, kind: str, fpr: float) -> float:
+    """The fused threshold for a statement of this kind (overall when the kind was rare)."""
+    by_kind = final.get("thresholds_by_kind") or {}
+    if kind in by_kind and fpr in by_kind[kind]:
+        return by_kind[kind][fpr]
+    return final["thresholds"]["fused_boosting"][fpr]
 
 
 def apply_final(final: dict, statements: list[Statement]) -> list[float]:
@@ -322,6 +351,23 @@ def evaluate(statements: list[Statement], fused: dict[str, list[float]],
                 result["by_kind"].setdefault(f"{kind[0]}|{kind[1]}", {"n": len(idx)}) \
                     [f"{name}@{fpr:g}"] = sum(score(name, i) > t for i in idx) / len(idx)
         result["overall"][name] = entry
+
+    # The fused score with a threshold per kind of copy (each kind's genuine statements flagged
+    # at fpr; kinds with too few genuine statements share the overall threshold).
+    for name in fused:
+        s_all = fused[name]
+        th = per_kind_thresholds(statements, s_all, fprs)
+        overall = {f: threshold_at([s_all[i] for i in genuine], f) for f in fprs}
+        entry = {}
+        for fpr in fprs:
+            t = lambda i: th.get(statements[i].kind, overall)[fpr]  # noqa: E731
+            entry[f"caught@{fpr:g}"] = sum(s_all[i] > t(i) for i in forged) / len(forged) if forged else None
+            entry[f"false_alarms@{fpr:g}"] = sum(s_all[i] > t(i) for i in genuine) / len(genuine)
+            for kind, idx in kinds.items():
+                result["by_kind"][f"{kind[0]}|{kind[1]}"][f"{name}_per_kind@{fpr:g}"] = \
+                    sum(s_all[i] > t(i) for i in idx) / len(idx)
+        entry["kinds"] = sorted(th)
+        result.setdefault("per_kind", {})[name] = entry
     return result
 
 
