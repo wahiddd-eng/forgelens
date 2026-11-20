@@ -229,6 +229,14 @@ the rule-based signals on them, and applies the fusion model fitted on the test 
 screenshots and WhatsApp copies, trains ft6 from ft4 for 6,000 steps (one GPU), tests it on the
 phone copies, the rasterised test set and AIForge-Doc, and refits fusion with the phone copies.
 
+### Red-team (blind) set
+
+`python scripts/make_red_team_kit.py --out <dir>` makes the kit volunteers get (30 fictional
+statements from the ten hand-made banks, seeds 8000+, a one-page brief, a form) and a private
+key. When files come back: `python scripts/ingest_red_team.py --returned <folder> --form
+<form.csv> --key <dir>/key --out ~/forgelens-data/red_team/blind`, then evaluate `blind/genuine`
+and `blind/forged` like the test set and apply the test-set fusion model (`apply_fusion.py`).
+
 ## Real statements
 
 Real statements may come to the DGX only for the length of one run, and are deleted by it.
