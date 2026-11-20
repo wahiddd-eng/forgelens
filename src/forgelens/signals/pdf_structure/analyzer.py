@@ -174,7 +174,8 @@ def _revisions(raw: bytes) -> dict:
 # - FPDF names styles by suffix ("montserrat", "montserratB", "montserratsb");
 # - headings and labels in a second font repeat on every page (template text);
 # - symbol fonts (ZapfDingbats) draw ticks and bullets;
-# - Apple's print-to-PDF embeds a new subset of the same font for each page.
+# - Apple's print-to-PDF embeds a new subset of the same font for each page (and of every
+#   font, once the body font shows it).
 SYMBOL_FONTS = ("zapfdingbats", "dingbats", "symbol", "wingdings", "webdings")
 _WEIGHTS = (("extrabold", "black"), ("ultrabold", "black"), ("semibold", "semibold"),
             ("demibold", "semibold"), ("extralight", "light"), ("ultralight", "light"),
@@ -332,9 +333,17 @@ def analyze_pdf(pdf_path: str | Path, password: str | None = None) -> StructureR
         if ext not in ("n/a", ""):
             by_key.setdefault(family_weight(basefont), set()).add(basefont)
 
+    # Apple's print-to-PDF (Quartz PDFContext) writes a new subset of each font for every page:
+    # when the document's main font comes as many one-page subsets, every font does.
+    one_page_subsets = Counter(family_weight(n) for n, pg in font_pages.items()
+                               if "+" in n and len(pg) == 1)
+    print_subsetting = bool(one_page_subsets) and max(one_page_subsets.values()) >= 5
+
     def per_page_subsets(names: set[str]) -> bool:
         """One subset per page, on pages no other copy uses: print-to-PDF, not an edit."""
         used = [font_pages.get(n, set()) for n in names]
+        if print_subsetting and all(len(u) <= 2 for u in used):
+            return True
         return len(names) >= 3 and all(len(u) == 1 for u in used) \
             and len(set().union(*used)) == len(names)
 

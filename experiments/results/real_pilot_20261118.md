@@ -89,3 +89,19 @@ Fused, threshold per kind of copy: **60%** of all 1,996 forgeries at 1% false al
 5%), the same as with the old rules (60%); one threshold 57% (was 58%). PDF structure alone
 catches 98% of digital PDF edits (was 100%); fused still 100%. So the fixes cost the synthetic
 results nothing that fusion relies on, and remove more than half the real false alarms.
+
+## The three left (diagnostics of the third run)
+
+- **S017 (SBI, printed from Safari on iOS):** Apple's print-to-PDF wrote 31 one-page subsets of
+  the body font and three of the bold font, which `duplicate_font` read as a font added twice.
+  Fixed (21 Nov): when the body font comes as five or more one-page subsets, every font's
+  copies are print artefacts. A second font (Helvetica-Bold, 4 spans) on the last page remains.
+- **S001 and S026 (PNB, both made by OpenPDF 1.3.32):** the same pattern in both: Helvetica,
+  not embedded, on one page, and LiberationSans for 5 spans on the last page. Two genuine
+  statements of one bank with the same "anomaly" is the bank's own layout, but no rule from the
+  file alone can tell it from an edit. Options: per-bank profiles learned from genuine
+  statements (evaluated leaving each statement out), or accept and report.
+- **Financial (7 of 19, not fused):** J&K statements printed from iOS leave 46–118 amounts
+  unread and 20–67 balance breaks; two Axis statements break in clusters (likely same-day rows
+  in a different order). **OCR (8 of 22, not fused):** long statements (650–2,700 rows) keep
+  1–26 misreads that no rule explains.
