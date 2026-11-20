@@ -104,7 +104,11 @@ def diagnose(pdf: Path, password: str | None, fin=None, struct=None, ocr=None,
         try:
             parsed = parse_statement(pdf, password)
             opening = parsed.opening_row.balance if parsed.opening_row else parsed.summary.get("opening")
-            out["financial"]["headers"] = sorted({h for hs in parsed.header_labels.values() for h in hs})[:20]
+            # column labels only: short, no digits, no "label : value" pairs
+            out["financial"]["headers"] = sorted({
+                h for hs in parsed.header_labels.values() for h in hs
+                if len(h) <= 24 and not re.search(r"[\d:]", h)})[:20]
+            out["financial"]["unread_amounts"] = getattr(fin, "unread_amounts", None)
             out["financial"]["summary_keys"] = sorted(parsed.summary)
             out["financial"]["has_opening"] = opening is not None
             out["financial"]["readings"] = {

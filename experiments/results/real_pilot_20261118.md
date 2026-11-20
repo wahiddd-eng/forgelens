@@ -37,3 +37,26 @@ Next: a second run with privacy-safe diagnostics (`--diagnostics`: producer soft
 names, which checks fired on how many spans or rows, balance breaks under other readings of the
 table; no text, dates or amounts), then rules that tolerate what genuine bank software does,
 checked statement by statement against these 28 without fitting to them.
+
+## Diagnostics run (19 Nov 2026) and rule fixes
+
+Second run with `--diagnostics` (same 28 statements read; S001 and S012 not opened): the same
+7 flags. The diagnostics (no text, dates or amounts; kept off the repository) show where each
+false alarm comes from:
+
+| Cause | Statements | Fix (code 20 Nov) |
+| --- | --- | --- |
+| Weights of one family read as a second family (SourceSans3-SemiBold, Mulish-Black, Rubik-Medium) or as a duplicate (Rubik-Regular / Rubik-Medium) | Kotak ×3, ICICI ×2, Slice | `family_weight()`: family, weight class and italic, separately |
+| FPDF style suffixes ("montserrat", "montserratB", "montserratsb") | FamApp | suffixes stripped; style-suffixed spellings are one family |
+| Symbol font (ZapfDingbats) | PNB | symbol fonts ignored |
+| Non-embedded standard font that is the document's body font (Helvetica, Times) | IDBI, PNB | a font drawing ≥20% of the text is not patched-in text |
+| Second font for headings and labels that repeat on every page | Axis, Kotak | "template text": a font whose text mostly repeats on other pages |
+| Apple print-to-PDF: a new font subset for each page | SBI (Safari) | one subset per page on disjoint pages is not a duplicate |
+| 0.00 printed in the empty debit/credit column | IDBI (461 row_format) | a zero beside a non-zero amount is an empty cell |
+| Rows whose amount the reader did not find (printed web pages) | J&K ×3 | counted as unread, left out of the balance chain |
+
+On 64 fresh synthetic PDF edits and 16 genuine statements the fixed rules flag exactly what
+the old ones did (PDF structure 64/64 forged, 0/16 genuine; financial 31/64, 0/16). Still
+unexplained and left alone: a second font on the last page(s) only (IDBI, PNB, SBI Safari),
+balance breaks on two Axis statements, and the OCR misreads on long statements. A third run
+measures the effect.

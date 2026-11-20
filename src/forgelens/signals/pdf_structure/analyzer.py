@@ -43,7 +43,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from ...reader import UnreadablePDF, font_key, full_font_names, open_pdf
+from ...reader import UnreadablePDF, full_font_names, open_pdf
 
 WEIGHTS = {
     "incremental_update": 0.5,
@@ -56,6 +56,7 @@ WEIGHTS = {
     "font_anomaly": 0.6,
 }
 MINOR_FAMILY_SHARE = 0.2  # a second font family used by fewer spans than this is suspicious
+TEMPLATE_SHARE = 0.5  # a font whose text mostly repeats on other pages is template text
 _BYTE_RANGE = re.compile(rb"/ByteRange\s*\[\s*(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s*\]")
 _LINEARIZED = re.compile(rb"/Linearized\s+[\d.]+")
 
@@ -167,6 +168,52 @@ def _revisions(raw: bytes) -> dict:
     }
 
 
+# What genuine bank software does that the font checks must not read as editing (seen on 28
+# real statements from 10 banks, experiments/results/real_pilot_20261118.md):
+# - weights of one family (Regular, Medium, SemiBold, Black) are one family, not a second one;
+# - FPDF names styles by suffix ("montserrat", "montserratB", "montserratsb");
+# - headings and labels in a second font repeat on every page (template text);
+# - symbol fonts (ZapfDingbats) draw ticks and bullets;
+# - Apple's print-to-PDF embeds a new subset of the same font for each page.
+SYMBOL_FONTS = ("zapfdingbats", "dingbats", "symbol", "wingdings", "webdings")
+_WEIGHTS = (("extrabold", "black"), ("ultrabold", "black"), ("semibold", "semibold"),
+            ("demibold", "semibold"), ("extralight", "light"), ("ultralight", "light"),
+            ("black", "black"), ("heavy", "black"), ("bold", "bold"), ("medium", "medium"),
+            ("light", "light"), ("thin", "light"), ("book", "regular"), ("regular", "regular"),
+            ("roman", "regular"), ("normal", "regular"))
+
+
+def family_weight(name: str) -> tuple[str, str, bool]:
+    """(family, weight class, italic) of a font name, ignoring subset tags and spelling."""
+    base = name.split("+", 1)[-1]
+    weight, italic = None, False
+    m = re.search(r"(?<=[a-z0-9])(BI|B|I)$", base)  # FPDF style suffix: "montserratB"
+    if m:
+        base = base[:m.start()]
+        weight = "bold" if "B" in m.group(1) else None
+        italic = "I" in m.group(1)
+    letters = re.sub(r"[^a-z]", "", base.lower())
+    if "italic" in letters or "oblique" in letters:
+        italic = True
+        letters = letters.replace("italic", "").replace("oblique", "")
+    for word, cls in _WEIGHTS:
+        if word in letters:
+            letters = letters.replace(word, "")
+            weight = weight or cls
+    family = letters.removesuffix("mt").removesuffix("ps").replace("semicondensed", "condensed")
+    return family, weight or "regular", italic
+
+
+def _is_symbol(name: str) -> bool:
+    return any(w in name.lower() for w in SYMBOL_FONTS)
+
+
+def _same_family(a: str, b: str) -> bool:
+    """Equal families, or one a style-suffixed spelling of the other ("montserrat"/"montserratsb")."""
+    short, long_ = sorted((a, b), key=len)
+    return a == b or (len(short) >= 5 and long_.startswith(short) and len(long_) - len(short) <= 2)
+
+
 def analyze_pdf(pdf_path: str | Path, password: str | None = None) -> StructureReport:
     """Run the PDF-structure signal on ``pdf_path``.
 
@@ -185,9 +232,11 @@ def analyze_pdf(pdf_path: str | Path, password: str | None = None) -> StructureR
         meta = doc.metadata or {}
         pages = doc.page_count
         fonts: dict[int, tuple[str, str, str]] = {}  # xref -> (ext, type, basefont)
+        font_pages: dict[str, set[int]] = {}  # basefont -> pages that use it
         for p in range(pages):
             for xref, ext, ftype, basefont, *_ in doc.get_page_fonts(p):
                 fonts[xref] = (ext, ftype, basefont)
+                font_pages.setdefault(basefont, set()).add(p)
         streams = [len(doc[p].get_contents()) for p in range(pages)]
         spans = []
         for p in range(pages):
@@ -246,20 +295,50 @@ def analyze_pdf(pdf_path: str | Path, password: str | None = None) -> StructureR
                              f"The document was modified {when} after it was created "
                              f"({created:%d-%m-%Y} → {modified:%d-%m-%Y})."))
 
-    # 3. Non-embedded standard fonts alongside embedded ones
+    # 3. Non-embedded standard fonts alongside embedded ones (not symbol fonts, and not a font
+    #    the template uses on most pages)
+    #    A font is template text when most of what it draws repeats, word for word, on other
+    #    pages (headings, column labels, the bank's name). An edited amount does not repeat.
+    pages_by_text: dict[str, set[int]] = {}
+    for p, _, _, text in spans:
+        pages_by_text.setdefault(text, set()).add(p)
+
+    def template_share(selected) -> float:
+        texts = [t for p, f, _, t in spans if selected(f)]
+        return sum(len(pages_by_text[t]) >= 2 for t in texts) / len(texts) if texts else 0.0
+
+    def is_template(selected) -> bool:
+        return pages > 1 and template_share(selected) >= TEMPLATE_SHARE
+
+    #    A font that draws a large share of the text (the document's own body font, as IDBI's
+    #    and PNB's are) is not patched-in text either.
+    spans_by_family = Counter(family_weight(f)[0] for _, f, _, _ in spans)
+
+    def main_text(name: str) -> bool:
+        return spans_by_family[family_weight(name)[0]] >= MINOR_FAMILY_SHARE * len(spans)
+
     embedded = [f for f in fonts.values() if f[0] not in ("n/a", "")]
-    missing = sorted({f[2] for f in fonts.values() if f[0] in ("n/a", "")})
+    missing = sorted({f[2] for f in fonts.values() if f[0] in ("n/a", "")
+                      and not _is_symbol(f[2]) and not main_text(f[2])
+                      and not is_template(lambda name, b=f[2]: name == b)})
     if embedded and missing:
         add(StructureFinding("non_embedded_font",
                              f"Text is drawn in non-embedded font(s) {', '.join(missing)} while the "
                              "rest of the document uses embedded fonts."))
 
     # 4. Same family and style embedded more than once
-    by_key: dict[tuple[str, str], set[str]] = {}
+    by_key: dict[tuple[str, str, bool], set[str]] = {}
     for ext, _, basefont in fonts.values():
         if ext not in ("n/a", ""):
-            by_key.setdefault(font_key(basefont), set()).add(basefont)
-    dupes = {k: v for k, v in by_key.items() if len(v) > 1}
+            by_key.setdefault(family_weight(basefont), set()).add(basefont)
+
+    def per_page_subsets(names: set[str]) -> bool:
+        """One subset per page, on pages no other copy uses: print-to-PDF, not an edit."""
+        used = [font_pages.get(n, set()) for n in names]
+        return len(names) >= 3 and all(len(u) == 1 for u in used) \
+            and len(set().union(*used)) == len(names)
+
+    dupes = {k: v for k, v in by_key.items() if len(v) > 1 and not per_page_subsets(v)}
     if dupes:
         listed = "; ".join(" / ".join(sorted(v)) for v in dupes.values())
         add(StructureFinding("duplicate_font",
@@ -277,23 +356,30 @@ def analyze_pdf(pdf_path: str | Path, password: str | None = None) -> StructureR
                                  "after the page was drawn.", page=extra[0]))
 
     # 6. Span-level font anomalies (localised)
-    span_keys = [(font_key(font), font) for _, font, _, _ in spans]
-    family_counts = Counter(k[0] for k, _ in span_keys)
-    main_family = family_counts.most_common(1)[0][0]
-    names_by_key: dict[tuple[str, str], Counter] = {}
+    span_keys = [(family_weight(font), font) for _, font, _, _ in spans]
+    raw_counts = Counter(k[0] for k, _ in span_keys)
+    main_family = raw_counts.most_common(1)[0][0]
+
+    def fam(f: str) -> str:  # style-suffixed spellings of the main family are the main family
+        return main_family if _same_family(f, main_family) else f
+
+    family_counts = Counter(fam(key[0]) for key, _ in span_keys)
+    names_by_key: dict[tuple, Counter] = {}
     for key, font in span_keys:
-        names_by_key.setdefault(key, Counter())[font] += 1
+        names_by_key.setdefault((fam(key[0]),) + key[1:], Counter())[font] += 1
     odd = set()
-    for (family, style), names in names_by_key.items():
+    for key, names in names_by_key.items():
+        family = key[0]
+        if any(_is_symbol(n) for n in names) or is_template(lambda f, n=set(names): f in n):
+            continue
         if family != main_family and family_counts[family] / len(spans) < MINOR_FAMILY_SHARE:
-            odd.update((family, style, n) for n in names)
-        elif len(names) > 1:  # same family and style under two names: the rarer one was added
-            common = names.most_common(1)[0][0]
-            odd.update((family, style, n) for n in names if n != common)
+            odd.update(names)
+        elif len(names) > 1 and not per_page_subsets(set(names)):
+            common = names.most_common(1)[0][0]  # same font under two names: the rarer was added
+            odd.update(n for n in names if n != common)
     locations = [
         {"page": p, "bbox": bbox, "text": text, "font": font}
-        for (p, font, bbox, text), (key, _) in zip(spans, span_keys)
-        if (key[0], key[1], font) in odd
+        for (p, font, bbox, text) in spans if font in odd
     ]
     if locations:
         odd_fonts = sorted({loc["font"] for loc in locations})

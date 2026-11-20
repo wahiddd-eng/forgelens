@@ -46,6 +46,7 @@ class FinancialReport:
     checks_run: list[str] = field(default_factory=list)
     parse_warnings: list[str] = field(default_factory=list)
     error: str | None = None  # why the file could not be read (locked, damaged)
+    unread_amounts: int = 0  # rows whose amount the reader did not find (not counted as edits)
 
     @property
     def consistent(self) -> bool:
@@ -106,13 +107,23 @@ def check_parsed(parsed: ParsedStatement) -> FinancialReport:
         return report
     add = report.findings.append
     summary = parsed.summary
+    for r in parsed.rows:  # some banks print 0.00 in the empty column (IDBI)
+        if r.debit is not None and r.credit is not None:
+            if r.debit == 0 and r.credit != 0:
+                r.debit = None
+            elif r.credit == 0 and r.debit != 0:
+                r.credit = None
 
-    # 2. Row format
+    # 2. Row format. A row whose amount was not read at all (a wrapped narration line, a row
+    #    split across lines by a printed web page) is a reading problem, not an edit: it is
+    #    counted in ``unread_amounts`` and left out of the balance check below.
     report.checks_run.append("row_format")
     for r in parsed.rows:
-        if (r.debit is None) == (r.credit is None):
+        if r.debit is not None and r.credit is not None:
             add(Finding("row_format", f"Row {r.index + 1} ({r.date}) should have exactly one of a "
                         "debit or a credit", row=r.index, page=r.page))
+        elif r.debit is None and r.credit is None:
+            report.unread_amounts += 1
         if r.balance is None:
             add(Finding("row_format", f"Row {r.index + 1} ({r.date}) has no balance",
                         row=r.index, page=r.page))
@@ -128,6 +139,9 @@ def check_parsed(parsed: ParsedStatement) -> FinancialReport:
         previous = opening
         for r in parsed.rows:
             if r.balance is None:
+                continue
+            if r.debit is None and r.credit is None:  # amount not read: continue from here
+                previous = r.balance
                 continue
             expected = previous - (r.debit or 0) + (r.credit or 0)
             if _differs(expected, r.balance):
