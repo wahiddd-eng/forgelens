@@ -237,6 +237,12 @@ key. When files come back: `python scripts/ingest_red_team.py --returned <folder
 <form.csv> --key <dir>/key --out ~/forgelens-data/red_team/blind`, then evaluate `blind/genuine`
 and `blind/forged` like the test set and apply the test-set fusion model (`apply_fusion.py`).
 
+### Repeat runs (about 10 hours, two GPUs)
+
+`bash scripts/queue_repeats.sh 2>&1 | tee ~/night12.log` trains the ft4 -> ft6 chain twice more
+(seeds 2 and 3, `train_adcdnet.py --seed`), tests each like ft4 and ft6, and prints the catch
+rates of all three runs with mean and standard deviation.
+
 ## Real statements
 
 Real statements may come to the DGX only for the length of one run, and are deleted by it.

@@ -55,6 +55,8 @@ def parse_args(argv=None):
     p.add_argument("--resume", action="store_true")
     g = p.add_argument_group("training")
     g.add_argument("--steps", type=int, default=20000, help="optimiser steps")
+    g.add_argument("--seed", type=int, help="random seed (crops, sampling, JPEG settings, "
+                   "initialisation of new layers); unset: a different run each time")
     g.add_argument("--batch-size", type=int, default=8, help="per GPU")
     g.add_argument("--accum", type=int, default=2, help="gradient accumulation")
     g.add_argument("--crop", type=int, default=256, help="training crop size (upstream: 256)")
@@ -109,6 +111,14 @@ def main(argv=None) -> int:
 
     distributed = "WORLD_SIZE" in os.environ and int(os.environ["WORLD_SIZE"]) > 1
     rank = int(os.environ.get("RANK", "0"))
+    if args.seed is not None:  # workers derive their seeds from torch's (training.worker_init)
+        import random
+
+        import numpy as np
+
+        random.seed(args.seed + rank)
+        np.random.seed(args.seed + rank)
+        torch.manual_seed(args.seed + rank)
     local = int(os.environ.get("LOCAL_RANK", "0"))
     world = int(os.environ.get("WORLD_SIZE", "1"))
     if distributed:
