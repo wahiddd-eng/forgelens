@@ -60,3 +60,32 @@ the old ones did (PDF structure 64/64 forged, 0/16 genuine; financial 31/64, 0/1
 unexplained and left alone: a second font on the last page(s) only (IDBI, PNB, SBI Safari),
 balance breaks on two Axis statements, and the OCR misreads on long statements. A third run
 measures the effect.
+
+## Third run, with the fixed rules (20 Nov 2026)
+
+Code 499a6fa, image model ft4; 29 of 30 statements read (S001 now opened; S012 password
+still wrong).
+
+| Signal | Run 1–2 (28 read) | Run 3 (29 read) | Run 3 flagged |
+| --- | ---: | ---: | --- |
+| Image (ft4) | 4 (14%) | 4 (14%) | S004, S005, S024, S027 |
+| Financial | 7 of 19 (37%) | 7 of 19 (37%) | S004, S006, S008, S010, S011, S014, S029 |
+| PDF structure | 9 (32%) | **5 (17%)** | S001, S002, S008, S017, S026 |
+| OCR arithmetic | 8 of 22 (36%) | 8 of 22 (36%) | unchanged |
+| **ForgeLens (fused)** | 7 (25%, CI 13–43%) | **3 (10.3%, CI 3.6–26.4%)** | S001, S017, S026 |
+
+Fused flags by bank: Kotak 3/3 → 0/3, IDBI 1/1 → 0/1, Slice 1/1 → 0/1; still flagged: both
+PNB statements (2/2) and the SBI statement printed from Safari (1/5). Checks that fired:
+running_balance 6, font_anomaly 5 (was 11), non_embedded_font 5, duplicate_font 4 (was 5),
+row_format 1 (was 5), modified_after_creation 2, closing_balance 2, incremental_update 1.
+
+The image model's and the financial and OCR signals' own flags are unchanged (the image model
+is not fused on text PDFs; the financial and OCR flags do not reach the fused threshold).
+
+## Synthetic test set with the fixed rules (20 Nov 2026, tag final-ft6)
+
+Signals recomputed on the test set and phone copies with the fixed rules; image model ft6.
+Fused, threshold per kind of copy: **60%** of all 1,996 forgeries at 1% false alarms (64% at
+5%), the same as with the old rules (60%); one threshold 57% (was 58%). PDF structure alone
+catches 98% of digital PDF edits (was 100%); fused still 100%. So the fixes cost the synthetic
+results nothing that fusion relies on, and remove more than half the real false alarms.
