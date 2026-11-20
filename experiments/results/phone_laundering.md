@@ -91,3 +91,35 @@ image forgeries in screenshots and 73–75% in WhatsApp copies. WhatsApp compres
 costs a quarter of them. One threshold for every kind of copy wastes this: the per-kind
 thresholds need the system to know what kind of copy it has, which the file itself shows (an
 image-only page, its pixel width, PNG or JPEG).
+
+## Threshold per kind of copy (20 Nov 2026)
+
+`fuse_signals.py` with the copy kind read from each file (`fusion/copy_kind.py`), image model
+ft6, test set plus phone copies (600 genuine, 1,996 forged), tag `test-phone-ft6-kinds`, code
+b6fd100. One threshold for all genuine statements against one per kind (digital, scan,
+screenshot, phone JPEG), each flagging 1% of that kind's genuine statements:
+
+| Forgery | Copy | n | One threshold | Threshold per kind |
+| --- | --- | ---: | ---: | ---: |
+| image_inpaint | raster | 200 | 96% | 99% |
+| image_inpaint | screenshot | 100 | 89% | 94% |
+| image_inpaint | whatsapp | 100 | 79% | 73% |
+| image_splice | raster | 200 | 100% | 100% |
+| image_splice | screenshot | 100 | 97% | 99% |
+| image_splice | whatsapp | 100 | 85% | 80% |
+| pdf_edit | none | 200 | 100% | 100% |
+| pdf_edit | raster | 200 | 23% | 42% |
+| pdf_edit | screenshot | 100 | 17% | 35% |
+| pdf_edit | whatsapp | 100 | 13% | 3% |
+| rebuild | none | 198 | 58% | 58% |
+| rebuild | raster | 198 | 4% | 6% |
+| rebuild | screenshot | 100 | 9% | 13% |
+| rebuild | whatsapp | 100 | 4% | 1% |
+| **All forgeries** | | 1,996 | 58% | **60%** (65% at 5%) |
+
+With one threshold, the 1% of genuine statements it flags are mostly WhatsApp copies, so
+WhatsApp forgeries look better caught than they are; per kind, every kind of copy gets the
+same 1% false-alarm rate. That costs WhatsApp copies a few points (73–80% of image forgeries)
+and gains everywhere else, most on rasterised and screenshot PDF edits (42% and 35%, from 23%
+and 17%), which OCR arithmetic catches once the threshold is not spent on WhatsApp noise.
+Per-kind thresholds are the honest setting and the default from here.
