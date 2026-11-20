@@ -105,3 +105,16 @@ results nothing that fusion relies on, and remove more than half the real false 
   unread and 20–67 balance breaks; two Axis statements break in clusters (likely same-day rows
   in a different order). **OCR (8 of 22, not fused):** long statements (650–2,700 rows) keep
   1–26 misreads that no rule explains.
+
+## Bank profiles (21 Nov 2026, option A)
+
+`signals/pdf_structure/profiles.py`: per bank and producing software, the signatures of the
+structure findings (check, font families, where in the document: first/last/middle/several
+pages; no text) that genuine statements show. A finding whose signature another genuine
+statement of the same bank and software also shows is not counted. `eval_real.py` reports the
+fused verdict with profiles alongside the plain one, each statement judged against profiles
+built from the other statements only (leave-one-out), and writes the profiles
+(`bank_profiles_<date>.json`, git-ignored). Expected on the 29 statements: both PNB statements
+clear each other; S017, the only Safari print, keeps one finding (weight 0.6), below the
+fused threshold on its own. Profiles change nothing on the synthetic test set (its genuine
+statements raise no structure findings).

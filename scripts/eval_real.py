@@ -18,6 +18,7 @@ folder: the summary written to ``--summary`` (Markdown) and its ``.json`` twin.
 from __future__ import annotations
 
 import argparse
+import copy
 import csv
 import json
 import pickle
@@ -38,6 +39,9 @@ def parse_args(argv=None):
     p.add_argument("--summary", type=Path, required=True)
     p.add_argument("--dpi", type=int, default=150)
     p.add_argument("--device", default="cuda")
+    p.add_argument("--profiles-out", type=Path,
+                   help="write the bank profiles learned from these genuine statements (finding "
+                        "signatures per bank and producing software; no text)")
     p.add_argument("--diagnostics", type=Path,
                    help="also write per-statement diagnostics here (how each file is built and "
                         "parsed, which checks fired; no text, dates or amounts)")
@@ -109,7 +113,7 @@ def main(argv=None) -> int:
 
         ocr = OcrReader(gpu=args.device != "cpu")
 
-    rows, statements, diagnostics = [], [], {}
+    rows, statements, diagnostics, structs = [], [], {}, {}
     for pdf, bank, password in files:
         fin = struct = rep = None
         row = {"id": pdf.stem, "bank": bank, "error": "", "checks": ""}
@@ -151,6 +155,8 @@ def main(argv=None) -> int:
         except Exception:  # noqa: BLE001 - one bad file must not stop the run
             row["error"] = "unreadable"  # (no message: it could quote the file's contents)
         st.scores.setdefault("template", None)
+        if struct is not None and not row["error"]:
+            structs[len(rows)] = struct
         if args.diagnostics and not row["error"]:
             from forgelens.evaluation.real_diagnostics import diagnose
 
@@ -164,7 +170,24 @@ def main(argv=None) -> int:
         print(f"  {pdf.stem}: {'error: ' + row['error'] if row['error'] else 'done'}",
               flush=True)
 
-    summary = summarise(rows, statements, final, detector is not None)
+    # Bank profiles, leaving each statement out of its own (signals/pdf_structure/profiles.py)
+    from forgelens.signals.pdf_structure.profiles import BankProfiles
+
+    profiles = BankProfiles()
+    for i, rep in structs.items():
+        profiles.add(rows[i]["id"], rows[i]["bank"], rep.stats.get("producer", ""), rep)
+    profiled = []
+    for i, st in enumerate(statements):
+        st2 = copy.deepcopy(st)
+        if i in structs:
+            st2.scores["structure"] = profiles.score(
+                structs[i], rows[i]["bank"], structs[i].stats.get("producer", ""),
+                exclude=rows[i]["id"])
+        profiled.append(st2)
+    summary = summarise(rows, statements, final, detector is not None, profiled=profiled)
+    if args.profiles_out:
+        args.profiles_out.parent.mkdir(parents=True, exist_ok=True)
+        profiles.save(args.profiles_out)
     if args.diagnostics:
         for r in rows:
             if r["id"] in diagnostics:
@@ -200,7 +223,8 @@ def for_fusion(st, row: dict):
     return st
 
 
-def summarise(rows: list[dict], statements: list, final: dict, image_signal: bool) -> dict:
+def summarise(rows: list[dict], statements: list, final: dict, image_signal: bool,
+              profiled: list | None = None) -> dict:
     """False-alarm counts per signal and for the fused verdict, at the thresholds the fusion
     model was saved with. ``rows``: id, bank, error, checks (and image_only) per statement;
     ``statements``: their scores (``fusion.Statement``)."""
@@ -211,6 +235,11 @@ def summarise(rows: list[dict], statements: list, final: dict, image_signal: boo
     for i, f in zip(ok, fused, strict=True):
         rows[i]["fused"] = f
     names = [s for s in final["signals"] if s != "template"] + ["fused_boosting"]
+    if profiled is not None and ok:
+        fp = apply_final(final, [for_fusion(profiled[i], rows[i]) for i in ok])
+        for i, f in zip(ok, fp, strict=True):
+            rows[i]["fused_profiles"] = f
+        names.append("fused_profiles")
     summary = {"statements": len(rows), "read": len(ok),
                "errors": Counter(r["error"] for r in rows if r["error"]),
                "banks": Counter(r["bank"] for r in rows),
@@ -220,25 +249,28 @@ def summarise(rows: list[dict], statements: list, final: dict, image_signal: boo
                "checks_fired": Counter(c for r in rows for c in r["checks"].split(";") if c)}
     for fpr in (0.01, 0.05):
         for name in names:
-            t = final["thresholds"].get(name, {}).get(fpr)
+            fused_name = name in ("fused_boosting", "fused_profiles")
+            t = final["thresholds"].get("fused_boosting" if fused_name else name, {}).get(fpr)
             if t is None:
                 continue
             flagged = []
             for i in ok:
-                v = rows[i]["fused"] if name == "fused_boosting" else statements[i].scores.get(name)
-                ti = threshold_for(final, statements[i].kind, fpr) if name == "fused_boosting" else t
+                v = rows[i].get(name.replace("_boosting", "")) if fused_name \
+                    else statements[i].scores.get(name)
+                ti = threshold_for(final, statements[i].kind, fpr) if fused_name else t
                 if v is not None and v > ti:
                     flagged.append(i)
-            assessed = [i for i in ok if name == "fused_boosting"
+            assessed = [i for i in ok if fused_name
                         or statements[i].scores.get(name) is not None]
             lo, hi = wilson(len(flagged), len(assessed))
             summary["flagged"][f"{name}@{fpr:g}"] = {
                 "flagged": len(flagged), "assessed": len(assessed), "ci95": [lo, hi],
                 "ids": [rows[i]["id"] for i in flagged]}
-            if name == "fused_boosting":
+            if fused_name:
                 for bank in summary["banks"]:
                     b = [i for i in assessed if rows[i]["bank"] == bank]
-                    summary["by_bank"][bank][f"{fpr:g}"] = [sum(i in flagged for i in b), len(b)]
+                    tag = f"{fpr:g}" if name == "fused_boosting" else f"profiles@{fpr:g}"
+                    summary["by_bank"][bank][tag] = [sum(i in flagged for i in b), len(b)]
 
     return summary
 
@@ -247,7 +279,8 @@ def markdown(s: dict, names: list[str]) -> str:
     label = {"image": "Image (ADCD-Net)", "image_released": "Image (released)",
              "ocr_financial": "OCR arithmetic", "financial": "Financial",
              "structure": "PDF structure",
-             "fused_boosting": "**ForgeLens (fused)**"}
+             "fused_boosting": "**ForgeLens (fused)**",
+             "fused_profiles": "**ForgeLens, with bank profiles (leave-one-out)**"}
     lines = ["# ForgeLens on real bank statements", "",
              (f"{s['statements']} genuine statements from {len(s['banks'])} banks "
              f"({', '.join(f'{b} {n}' for b, n in sorted(s['banks'].items()))}); "
@@ -270,6 +303,11 @@ def markdown(s: dict, names: list[str]) -> str:
     lines += ["", "Fused flags by bank at 1% (flagged / assessed): " + ", ".join(
         f"{b} {v.get('0.01', [0, 0])[0]}/{v.get('0.01', [0, 0])[1]}"
         for b, v in sorted(s["by_bank"].items())) + "."]
+    if any("profiles@0.01" in v for v in s["by_bank"].values()):
+        lines += ["", "With bank profiles (each statement judged against profiles built from the "
+                  "others): " + ", ".join(
+                      f"{b} {v['profiles@0.01'][0]}/{v['profiles@0.01'][1]}"
+                      for b, v in sorted(s["by_bank"].items()) if "profiles@0.01" in v) + "."]
     if not s["image_signal"]:
         lines += ["", "The image signal was not run (no GPU or no --config)."]
     return "\n".join(lines) + "\n"

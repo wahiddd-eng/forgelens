@@ -67,6 +67,7 @@ class StructureFinding:
     message: str
     page: int | None = None
     locations: list[dict] = field(default_factory=list)  # [{"page": int, "bbox": [...], "text"}]
+    fonts: list[str] = field(default_factory=list)  # the fonts a font check is about
 
 
 @dataclass
@@ -325,7 +326,7 @@ def analyze_pdf(pdf_path: str | Path, password: str | None = None) -> StructureR
     if embedded and missing:
         add(StructureFinding("non_embedded_font",
                              f"Text is drawn in non-embedded font(s) {', '.join(missing)} while the "
-                             "rest of the document uses embedded fonts."))
+                             "rest of the document uses embedded fonts.", fonts=missing))
 
     # 4. Same family and style embedded more than once
     by_key: dict[tuple[str, str, bool], set[str]] = {}
@@ -352,7 +353,8 @@ def analyze_pdf(pdf_path: str | Path, password: str | None = None) -> StructureR
         listed = "; ".join(" / ".join(sorted(v)) for v in dupes.values())
         add(StructureFinding("duplicate_font",
                              f"The same font is embedded more than once under different names "
-                             f"({listed})."))
+                             f"({listed}).",
+                             fonts=sorted(n for v in dupes.values() for n in v)))
 
     # 5. Pages with extra content streams
     if pages > 1:
@@ -395,5 +397,6 @@ def analyze_pdf(pdf_path: str | Path, password: str | None = None) -> StructureR
         add(StructureFinding("font_anomaly",
                              f"{len(locations)} text span(s) use font(s) {', '.join(odd_fonts)}, "
                              "which the rest of the document does not use for this text.",
-                             page=locations[0]["page"], locations=locations))
+                             page=locations[0]["page"], locations=locations,
+                             fonts=sorted(odd_fonts)))
     return report
