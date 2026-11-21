@@ -1,0 +1,468 @@
+{
+ "as_of": "2026-11-21",
+ "headline": {
+  "test_set": {
+   "caught_1": 69,
+   "caught_5": 71,
+   "image_alone_1": 34,
+   "forged": 1196,
+   "genuine": 400,
+   "source": "experiments/results/fusion_test.md (17 Nov, ft4 + OCR arithmetic)"
+  },
+  "traceable": {
+   "caught_1": 89,
+   "traceable": 891,
+   "no_trace": 305,
+   "no_trace_share": 26,
+   "no_trace_caught": 12,
+   "source": "experiments/results/ablations_test.md"
+  },
+  "with_phone": {
+   "caught_1": 60,
+   "caught_5": 64,
+   "forged": 1996,
+   "genuine": 600,
+   "source": "experiments/results/real_pilot_20261118.md (final-ft6, threshold per kind of copy)"
+  },
+  "real": {
+   "runs": [
+    {
+     "label": "First version",
+     "date": "18 Nov",
+     "flagged": 7,
+     "read": 28,
+     "rate": 25.0,
+     "ci": [
+      12.7,
+      43.4
+     ]
+    },
+    {
+     "label": "Rules fixed for real bank software",
+     "date": "20 Nov",
+     "flagged": 3,
+     "read": 29,
+     "rate": 10.3,
+     "ci": [
+      3.6,
+      26.4
+     ]
+    }
+   ],
+   "sources_count": 10,
+   "statements": 30,
+   "source": "experiments/results/real_pilot_20261118.md"
+  }
+ },
+ "signal_matrix": {
+  "title": "Which signal catches which forgery",
+  "note": "Share of each kind caught at the threshold that flags 1% of genuine statements; held-out test set, image model ft4.",
+  "columns": [
+   "Image model",
+   "Arithmetic (text)",
+   "PDF structure",
+   "Bank layout",
+   "Arithmetic (image)",
+   "ForgeLens"
+  ],
+  "rows": [
+   {
+    "label": "AI-inpainted value",
+    "copy": "rasterised",
+    "n": 200,
+    "values": [
+     100,
+     0,
+     0,
+     0,
+     47,
+     100
+    ]
+   },
+   {
+    "label": "Spliced value",
+    "copy": "rasterised",
+    "n": 200,
+    "values": [
+     100,
+     0,
+     0,
+     0,
+     48,
+     100
+    ]
+   },
+   {
+    "label": "PDF-editor edit",
+    "copy": "bank PDF",
+    "n": 200,
+    "values": [
+     0,
+     46,
+     100,
+     100,
+     0,
+     100
+    ]
+   },
+   {
+    "label": "PDF-editor edit",
+    "copy": "rasterised",
+    "n": 200,
+    "values": [
+     2,
+     0,
+     0,
+     0,
+     46,
+     45
+    ]
+   },
+   {
+    "label": "Rebuilt statement",
+    "copy": "bank PDF",
+    "n": 198,
+    "values": [
+     0,
+     0,
+     0,
+     58,
+     0,
+     58
+    ]
+   },
+   {
+    "label": "Rebuilt statement",
+    "copy": "rasterised",
+    "n": 198,
+    "values": [
+     3,
+     0,
+     0,
+     0,
+     5,
+     13
+    ]
+   }
+  ],
+  "source": "experiments/results/fusion_test.md"
+ },
+ "copies": {
+  "title": "Phone screenshots and WhatsApp copies",
+  "note": "Image model ft6; test set plus its phone copies (600 genuine, 1,996 forged). One threshold for every copy against one per kind of copy, each flagging 1% of genuine statements of that kind.",
+  "rows": [
+   {
+    "forgery": "AI-inpainted value",
+    "copy": "Rasterised",
+    "n": 200,
+    "one": 96,
+    "per_kind": 99
+   },
+   {
+    "forgery": "AI-inpainted value",
+    "copy": "Screenshot",
+    "n": 100,
+    "one": 89,
+    "per_kind": 94
+   },
+   {
+    "forgery": "AI-inpainted value",
+    "copy": "WhatsApp",
+    "n": 100,
+    "one": 79,
+    "per_kind": 73
+   },
+   {
+    "forgery": "Spliced value",
+    "copy": "Rasterised",
+    "n": 200,
+    "one": 100,
+    "per_kind": 100
+   },
+   {
+    "forgery": "Spliced value",
+    "copy": "Screenshot",
+    "n": 100,
+    "one": 97,
+    "per_kind": 99
+   },
+   {
+    "forgery": "Spliced value",
+    "copy": "WhatsApp",
+    "n": 100,
+    "one": 85,
+    "per_kind": 80
+   },
+   {
+    "forgery": "PDF-editor edit",
+    "copy": "Bank PDF",
+    "n": 200,
+    "one": 100,
+    "per_kind": 100
+   },
+   {
+    "forgery": "PDF-editor edit",
+    "copy": "Rasterised",
+    "n": 200,
+    "one": 23,
+    "per_kind": 42
+   },
+   {
+    "forgery": "PDF-editor edit",
+    "copy": "Screenshot",
+    "n": 100,
+    "one": 17,
+    "per_kind": 35
+   },
+   {
+    "forgery": "PDF-editor edit",
+    "copy": "WhatsApp",
+    "n": 100,
+    "one": 13,
+    "per_kind": 3
+   },
+   {
+    "forgery": "Rebuilt statement",
+    "copy": "Bank PDF",
+    "n": 198,
+    "one": 58,
+    "per_kind": 58
+   },
+   {
+    "forgery": "Rebuilt statement",
+    "copy": "Rasterised",
+    "n": 198,
+    "one": 4,
+    "per_kind": 6
+   },
+   {
+    "forgery": "Rebuilt statement",
+    "copy": "Screenshot",
+    "n": 100,
+    "one": 9,
+    "per_kind": 13
+   },
+   {
+    "forgery": "Rebuilt statement",
+    "copy": "WhatsApp",
+    "n": 100,
+    "one": 4,
+    "per_kind": 1
+   }
+  ],
+  "total": {
+   "one": 58,
+   "per_kind": 60,
+   "per_kind_5": 65
+  },
+  "source": "experiments/results/phone_laundering.md (threshold per kind of copy, 20 Nov)"
+ },
+ "models": {
+  "title": "Image models",
+  "note": "Share caught when 1% of genuine statements are flagged, rasterised held-out test set (ten hand-made banks). Localisation F1 is the mean over inpainting and splicing. AIForge-Doc measures edits by other AI tools.",
+  "rows": [
+   {
+    "model": "Released ADCD-Net",
+    "trained": "DocTamper",
+    "inpaint": 0,
+    "splice": 0,
+    "f1": null,
+    "aiforge": 0.176,
+    "aiforge_fa": 2.7,
+    "note": "At chance on statements (AUC about 0.5)"
+   },
+   {
+    "model": "ft1",
+    "trained": "10 hand-made banks",
+    "inpaint": 96,
+    "splice": 96,
+    "f1": 0.76,
+    "aiforge": 0.026,
+    "aiforge_fa": 9.6
+   },
+   {
+    "model": "ft3",
+    "trained": "10 banks, varied forgeries",
+    "inpaint": 94,
+    "splice": 95,
+    "f1": 0.71,
+    "aiforge": 0.115,
+    "aiforge_fa": 4.9
+   },
+   {
+    "model": "ft4",
+    "trained": "100 generated banks",
+    "inpaint": 100,
+    "splice": 99,
+    "f1": 0.79,
+    "aiforge": 0.076,
+    "aiforge_fa": 1.6,
+    "note": "Never saw the ten test banks"
+   },
+   {
+    "model": "ft5",
+    "trained": "ft3 and ft4 data",
+    "inpaint": 100,
+    "splice": 100,
+    "f1": 0.72,
+    "aiforge": 0.049,
+    "aiforge_fa": 4.2
+   },
+   {
+    "model": "ft6",
+    "trained": "ft4 plus phone copies",
+    "inpaint": 100,
+    "splice": 99,
+    "f1": 0.72,
+    "aiforge": 0.072,
+    "aiforge_fa": 3.9,
+    "note": "Screenshots 95–96%, WhatsApp 73–75%",
+    "current": true
+   }
+  ],
+  "source": "experiments/results/adcdnet_ft*.md, phone_laundering.md"
+ },
+ "ablations": {
+  "title": "What each signal adds",
+  "note": "ForgeLens with one signal left out, held-out test set, caught at 1% false alarms.",
+  "rows": [
+   {
+    "label": "All signals",
+    "value": 69,
+    "all": true
+   },
+   {
+    "label": "Without the image model",
+    "value": 50
+   },
+   {
+    "label": "Without the bank layout",
+    "value": 60
+   },
+   {
+    "label": "Without arithmetic on the image",
+    "value": 61
+   },
+   {
+    "label": "Without PDF structure",
+    "value": 69
+   },
+   {
+    "label": "Without arithmetic in the text",
+    "value": 69
+   }
+  ],
+  "source": "experiments/results/ablations_test.md"
+ },
+ "reproduction": {
+  "title": "Reproducing the base paper",
+  "note": "Per-image F1 on the Doc Protocol sets: the released ADCD-Net as published, and ForgeLens's image model ft4.",
+  "rows": [
+   {
+    "set": "DocTamper FCD",
+    "published": 0.803,
+    "ours": 0.735
+   },
+   {
+    "set": "DocTamper SCD",
+    "published": 0.718,
+    "ours": 0.689
+   },
+   {
+    "set": "DocTamper Test",
+    "published": 0.791,
+    "ours": 0.77
+   },
+   {
+    "set": "T-SROIE",
+    "published": 0.623,
+    "ours": 0.717
+   },
+   {
+    "set": "OSTF",
+    "published": 0.441,
+    "ours": 0.392
+   },
+   {
+    "set": "TPIC-13",
+    "published": 0.579,
+    "ours": 0.521
+   },
+   {
+    "set": "RTM",
+    "published": 0.159,
+    "ours": 0.121
+   }
+  ],
+  "source": "experiments/results/adcdnet_ft4.md"
+ },
+ "real_signals": {
+  "rows": [
+   {
+    "signal": "Image model",
+    "before": [
+     4,
+     28
+    ],
+    "after": [
+     4,
+     29
+    ]
+   },
+   {
+    "signal": "Arithmetic (text)",
+    "before": [
+     7,
+     19
+    ],
+    "after": [
+     7,
+     19
+    ]
+   },
+   {
+    "signal": "PDF structure",
+    "before": [
+     9,
+     28
+    ],
+    "after": [
+     5,
+     29
+    ]
+   },
+   {
+    "signal": "Arithmetic (image)",
+    "before": [
+     8,
+     22
+    ],
+    "after": [
+     8,
+     22
+    ]
+   },
+   {
+    "signal": "ForgeLens",
+    "before": [
+     7,
+     28
+    ],
+    "after": [
+     3,
+     29
+    ]
+   }
+  ],
+  "source": "experiments/results/real_pilot_20261118.md"
+ },
+ "data": {
+  "hand_made_banks": 10,
+  "generated_banks": 100,
+  "test_genuine": 400,
+  "test_forged": 1196,
+  "phone_copies": 1000,
+  "real_statements": 30,
+  "gpu_hours": 90
+ }
+}

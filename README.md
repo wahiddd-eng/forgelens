@@ -125,6 +125,12 @@ The suite renders and forges real PDFs, including an end-to-end run of the scrip
 dataset (`tests/test_pipeline_smoke.py`), and takes about two minutes. Tests that need
 Ghostscript are skipped when it is not installed.
 
+## Web app
+
+`python -m forgelens.app.server` serves a page to examine a statement (verdict, evidence marked
+on each page) and the project's results dashboard. How to run it on a laptop or on the DGX, and
+how uploads are handled: [`docs/app.md`](docs/app.md).
+
 ## Data and privacy
 
 Real bank statements and personal data must never be committed. Public dataset releases must use invented bank names and no real logos. Every real statement used for testing must be collected with consent.

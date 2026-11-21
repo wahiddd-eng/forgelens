@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ForgeLens</title>
+<meta name="description" content="ForgeLens examines Indian bank statements for signs of forgery and shows where it found evidence.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 26 26%22%3E%3Ccircle cx=%2211%22 cy=%2211%22 r=%228.5%22 fill=%22none%22 stroke=%22%2317222d%22 stroke-width=%222.4%22/%3E%3Cpath d=%22M17.4 17.4l6 6%22 stroke=%22%2317222d%22 stroke-width=%223%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
+<link rel="preload" href="static/fonts/public-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="static/app.css">
+<script type="module" src="static/app.js"></script>
+</head>
+<body>
+<header class="masthead">
+  <a class="wordmark" href="#examine" aria-label="ForgeLens, examine a statement">
+    <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+      <circle cx="11" cy="11" r="8.5" fill="none" stroke="#17222d" stroke-width="2"/>
+      <path d="M6.5 13.5h3l1.5-4 2 6 1.5-3h1.5" fill="none" stroke="#7a3ff2" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M17.4 17.4l6 6" stroke="#17222d" stroke-width="2.4" stroke-linecap="round"/>
+    </svg>
+    ForgeLens
+  </a>
+  <nav class="views" aria-label="Views">
+    <a href="#examine" data-view="examine">Examine a statement</a>
+    <a href="#results" data-view="results">Project results</a>
+  </nav>
+  <p class="server-state" id="server-state" aria-live="polite"></p>
+</header>
+
+<main>
+  <section class="examine" id="view-examine" aria-labelledby="examine-title">
+    <div class="intake">
+      <h1 id="examine-title">Examine a statement</h1>
+      <p class="lead">Upload a bank statement as a PDF, a screenshot or a photo. ForgeLens re-adds its figures, reads how the file was built, looks at its pixels and shows you where it found evidence.</p>
+
+      <form id="intake" novalidate>
+        <label class="drop" id="drop">
+          <input type="file" id="file" name="file" accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp">
+          <span class="drop-title" id="drop-title">Drop a statement here, or choose a file</span>
+          <span class="drop-hint" id="drop-hint">PDF, PNG or JPEG, up to 40 MB</span>
+        </label>
+
+        <div class="field">
+          <label for="bank">Bank <span class="opt">(optional)</span></label>
+          <input id="bank" name="bank" list="banks" autocomplete="off" spellcheck="false">
+          <datalist id="banks"></datalist>
+          <p class="hint">Lets ForgeLens compare the statement with that bank's layout and genuine statements.</p>
+        </div>
+
+        <div class="field">
+          <label for="password">PDF password <span class="opt">(optional)</span></label>
+          <input id="password" name="password" type="password" autocomplete="off" spellcheck="false">
+          <p class="hint">Used once to open the file, never stored.</p>
+        </div>
+
+        <button class="btn btn-primary" id="go" type="submit" disabled>Examine statement</button>
+        <p class="privacy" id="privacy">The file is examined on this server and deleted as soon as the result is ready.</p>
+      </form>
+
+      <p class="preview-note" id="preview-note" hidden>This is a preview. Uploading works when ForgeLens runs on the GPU server; here you can open fictional statements examined in advance with the rule-based checks.</p>
+
+      <section class="samples" aria-labelledby="samples-title">
+        <h2 id="samples-title">Fictional samples</h2>
+        <p>Statements from ForgeLens's made-up banks. The answer is shown after the examination.</p>
+        <ul class="sample-list" id="samples"></ul>
+      </section>
+
+      <section class="runs-here" aria-labelledby="runs-title">
+        <h2 id="runs-title">Checks on this server</h2>
+        <ul id="capabilities"></ul>
+      </section>
+    </div>
+
+    <div class="table" id="light-table" aria-live="polite">
+      <div class="empty">
+        <div>
+          <h2>Nothing on the table yet</h2>
+          <p>Choose a statement, or open one of the fictional samples, to see the verdict and the evidence on each page.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="results" id="view-results" aria-labelledby="results-title" hidden></section>
+</main>
+
+<footer class="foot">
+  <p>ForgeLens is a B.Tech project at SRM Institute of Science and Technology by Syed Wahid Sajad and Dhruv Bhoye, guided by Dr. N. Gopinath. Its image model is fine-tuned from ADCD-Net (ICCV 2025). The banks in the samples and the synthetic test sets are fictional.</p>
+</footer>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+</body>
+</html>
